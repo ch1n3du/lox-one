@@ -7,7 +7,7 @@ pub enum Literal {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub ty: TokenType,
+    pub token_type: TokenType,
     pub lexeme: Option<Vec<u8>>,
     pub literal: Option<Literal>,
     pub line: usize,
@@ -15,13 +15,13 @@ pub struct Token {
 
 impl Token {
     pub fn new(
-        ty: TokenType,
+        token_type: TokenType,
         lexeme: Option<Vec<u8>>,
         literal: Option<Literal>,
         line: usize,
     ) -> Token {
         Token {
-            ty,
+            token_type,
             lexeme,
             literal,
             line,

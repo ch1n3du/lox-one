@@ -191,13 +191,38 @@ impl Scanner {
             b';' => self.add_token(TokenType::Semicolon, None),
             b'r' => self.add_token(TokenType::Star, None),
 
-            b'!' => self.add_next_token_if_matches(b'=', TokenType::BangEqual, TokenType::Bang),
-            b'=' => self.add_next_token_if_matches(b'=', TokenType::EqualEqual, TokenType::Equal),
-            b'<' => self.add_next_token_if_matches(b'=', TokenType::LessEqual, TokenType::Less),
+            b'!' => {
+                let token_type = if self.matches_next(b'=') {
+                    TokenType::BangEqual
+                } else {
+                    TokenType::Bang
+                };
+                self.add_token(token_type, None);
+            },
+            b'=' => {
+                let token_type = if self.matches_next(b'=') {
+                    TokenType::EqualEqual
+                } else {
+                    TokenType::Equal
+                };
+                self.add_token(token_type, None);
+            },
+            b'<' => {
+                let token_type = if self.matches_next(b'=') {
+                    TokenType::LessEqual
+                } else {
+                    TokenType::Less
+                };
+                self.add_token(token_type, None);
+            },
             b'>' => {
-                self.add_next_token_if_matches(b'=', TokenType::GreaterEqual, TokenType::Greater)
-            }
-
+                let token_type = if self.matches_next(b'=') {
+                    TokenType::GreaterEqual
+                } else {
+                    TokenType::Greater
+                };
+                self.add_token(token_type, None);
+            },
             b'/' => self.scan_comment(),
             b'"' => self.scan_string(),
             b if b.is_ascii_digit() => self.scan_number(),

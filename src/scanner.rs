@@ -90,14 +90,6 @@ impl Scanner {
         self.tokens.push(tok)
     }
 
-    fn add_next_token_if_matches(&mut self, expected: u8, token_1: TokenType, token_2: TokenType) {
-        if self.matches_next(expected) {
-            self.add_token(TokenType::BangEqual, None)
-        } else {
-            self.add_token(TokenType::Bang, None)
-        }
-    }
-
     fn scan_comment(&mut self) {
         // While there is a comment keep on calling advance
         if self.matches_next(b'/') {
@@ -135,7 +127,7 @@ impl Scanner {
         while !self.is_at_end() && self.peek().is_ascii_digit() {
             self.advance();
         }
-        if  self.is_at_end() && self.matches_next(b'.') && self.peek().is_ascii_digit() {
+        if self.is_at_end() && self.matches_next(b'.') && self.peek().is_ascii_digit() {
             self.advance();
 
             while self.peek().is_ascii_digit() {
@@ -198,7 +190,7 @@ impl Scanner {
                     TokenType::Bang
                 };
                 self.add_token(token_type, None);
-            },
+            }
             b'=' => {
                 let token_type = if self.matches_next(b'=') {
                     TokenType::EqualEqual
@@ -206,7 +198,7 @@ impl Scanner {
                     TokenType::Equal
                 };
                 self.add_token(token_type, None);
-            },
+            }
             b'<' => {
                 let token_type = if self.matches_next(b'=') {
                     TokenType::LessEqual
@@ -214,7 +206,7 @@ impl Scanner {
                     TokenType::Less
                 };
                 self.add_token(token_type, None);
-            },
+            }
             b'>' => {
                 let token_type = if self.matches_next(b'=') {
                     TokenType::GreaterEqual
@@ -222,7 +214,7 @@ impl Scanner {
                     TokenType::Greater
                 };
                 self.add_token(token_type, None);
-            },
+            }
             b'/' => self.scan_comment(),
             b'"' => self.scan_string(),
             b if b.is_ascii_digit() => self.scan_number(),

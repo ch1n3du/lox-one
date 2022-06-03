@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(Debug)]
 pub enum LoxLiteral {
     Boolean(bool),
     Number(f64),
@@ -15,7 +16,7 @@ impl fmt::Display for LoxLiteral {
             Boolean(b) => write!(f, "{}", b),
             Number(n) => write!(f, "{}", n),
             String(s) => write!(f, "{}", s),
-            Nil => write!(f, "nil")
+            Nil => write!(f, "nil"),
         }
     }
 }

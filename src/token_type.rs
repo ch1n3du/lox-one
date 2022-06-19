@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::lox_literal::LoxLiteral;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     //Single character tokens.
     LeftParen,

@@ -1,6 +1,8 @@
-use crate::token::{Literal, Token};
-use crate::token_type::TokenType;
 use std::collections::HashMap;
+
+use crate::token::{Token};
+use crate::token_type::TokenType;
+use crate::lox_literal::LoxLiteral;
 
 pub struct Scanner {
     source: Vec<u8>,
@@ -77,17 +79,28 @@ impl Scanner {
         true
     }
 
-    // @desc Takes a TokenType and Literal, creates a new Token and pushses it to self.tokens.
-    fn add_token(&mut self, ty: TokenType, literal: Option<Literal>) {
+    fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<LoxLiteral>) {
         let tok = match literal {
             Some(_) => {
-                let lexeme = Some(self.source[self.start..self.current].to_vec());
-                Token::new(ty, lexeme, literal, self.line)
+                let lexeme = Some(self.get_curr_string());
+                Token::new(token_type, lexeme, literal, self.line)
             }
-            _ => Token::new(ty, None, None, self.line),
+            _ => Token::new(token_type, None, None, self.line),
         };
 
         self.tokens.push(tok)
+    }
+
+    fn add_token(&mut self, token_type: TokenType) {
+        self.add_token_with_literal(token_type, None)
+    }
+
+    fn get_curr_string(&self) -> String {
+        self.source[self.start..self.current]
+            .iter()
+            .cloned()
+            .map(|b| b as char)
+            .collect()
     }
 
     fn scan_comment(&mut self) {
@@ -109,7 +122,7 @@ impl Scanner {
                 self.advance();
             }
         } else {
-            self.add_token(TokenType::Slash, None)
+            self.add_token(TokenType::Slash)
         }
     }
 
@@ -120,7 +133,8 @@ impl Scanner {
             }
             self.advance();
         }
-        self.add_token(TokenType::String, Some(Literal::Todo))
+
+        self.add_token_with_literal(TokenType::String, Some(LoxLiteral::String(self.get_curr_string())))
     }
 
     fn scan_number(&mut self) {
@@ -134,37 +148,19 @@ impl Scanner {
                 self.advance();
             }
         }
-        self.add_token(TokenType::Number, Some(Literal::Todo));
-    }
 
-    fn scan_identifier_(&mut self) -> String {
-        while !self.is_at_end() && self.peek().is_ascii_alphanumeric() {
-            self.advance();
-        }
-        let identifier: String = self.source[self.start..self.current]
-            .iter()
-            .cloned()
-            .map(|c| c as char)
-            .collect::<String>();
-
-        identifier
-    }
-
-    fn set_identifier(&mut self, lexeme: String) {
-        match self.keywords.get(lexeme.as_str()) {
-            Some(ty) => self.tokens.push(Token::new(
-                ty.clone(),
-                Some(lexeme.as_bytes().to_vec()),
-                None,
-                self.line,
-            )),
-            None => self.add_token(TokenType::Identifier, Some(Literal::Todo)),
-        }
+        let number = self.get_curr_string().parse::<f64>().unwrap();
+        self.add_token_with_literal(TokenType::Number, Some(LoxLiteral::Number(number)));
     }
 
     fn scan_identifier(&mut self) {
-        let identifier = self.scan_identifier_();
-        self.set_identifier(identifier);
+        while !self.is_at_end() && self.peek().is_ascii_alphanumeric() {
+            self.advance();
+        }
+        let identifier: String = self.get_curr_string();
+
+        identifier;
+        self.add_token(TokenType::Identifier)
     }
 
     // @desc Calls advance and matches to handle the token.
@@ -172,16 +168,16 @@ impl Scanner {
         let c = self.advance();
 
         match c {
-            b'(' => self.add_token(TokenType::LeftParen, None),
-            b')' => self.add_token(TokenType::RightParen, None),
-            b'{' => self.add_token(TokenType::LeftBrace, None),
-            b'}' => self.add_token(TokenType::RightBrace, None),
-            b',' => self.add_token(TokenType::Comma, None),
-            b'.' => self.add_token(TokenType::Dot, None),
-            b'-' => self.add_token(TokenType::Minus, None),
-            b'+' => self.add_token(TokenType::Plus, None),
-            b';' => self.add_token(TokenType::Semicolon, None),
-            b'r' => self.add_token(TokenType::Star, None),
+            b'(' => self.add_token(TokenType::LeftParen),
+            b')' => self.add_token(TokenType::RightParen),
+            b'{' => self.add_token(TokenType::LeftBrace),
+            b'}' => self.add_token(TokenType::RightBrace),
+            b',' => self.add_token(TokenType::Comma),
+            b'.' => self.add_token(TokenType::Dot),
+            b'-' => self.add_token(TokenType::Minus),
+            b'+' => self.add_token(TokenType::Plus),
+            b';' => self.add_token(TokenType::Semicolon),
+            b'r' => self.add_token(TokenType::Star),
 
             b'!' => {
                 let token_type = if self.matches_next(b'=') {
@@ -189,7 +185,7 @@ impl Scanner {
                 } else {
                     TokenType::Bang
                 };
-                self.add_token(token_type, None);
+                self.add_token(token_type);
             }
             b'=' => {
                 let token_type = if self.matches_next(b'=') {
@@ -197,7 +193,7 @@ impl Scanner {
                 } else {
                     TokenType::Equal
                 };
-                self.add_token(token_type, None);
+                self.add_token(token_type);
             }
             b'<' => {
                 let token_type = if self.matches_next(b'=') {
@@ -205,7 +201,7 @@ impl Scanner {
                 } else {
                     TokenType::Less
                 };
-                self.add_token(token_type, None);
+                self.add_token(token_type);
             }
             b'>' => {
                 let token_type = if self.matches_next(b'=') {
@@ -213,7 +209,7 @@ impl Scanner {
                 } else {
                     TokenType::Greater
                 };
-                self.add_token(token_type, None);
+                self.add_token(token_type);
             }
             b'/' => self.scan_comment(),
             b'"' => self.scan_string(),
@@ -233,7 +229,7 @@ impl Scanner {
             self.scan_token();
         }
 
-        self.add_token(TokenType::Eof, None);
+        self.add_token(TokenType::Eof);
 
         &self.tokens
     }
@@ -274,8 +270,11 @@ mod tests {
 
     #[test]
     fn correct_number_of_tokens() {
-        let res = tokens_from_string("var \n x = if (5 > 7) \n 8 else 9.7823");
+        let tokens = tokens_from_string("var \n x = if (5 > 7) \n 8 else 9.7823");
 
+        for token in &tokens {
+            println!("{:?}", token)
+        }
         // assert_eq!(res.len(), 4, "Scans correct number of tokens")
     }
 }

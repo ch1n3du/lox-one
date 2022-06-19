@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LoxLiteral {
     Boolean(bool),
     Number(f64),

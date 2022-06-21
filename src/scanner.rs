@@ -5,16 +5,16 @@ use crate::token::Token;
 use crate::token_type::TokenType;
 
 pub struct Scanner {
-    source: Vec<u8>,
-    tokens: Vec<Token>,
-    start: usize,
-    current: usize,
-    line: usize,
-    keywords: HashMap<&'static str, TokenType>,
+    pub source: Vec<u8>,
+    pub tokens: Vec<Token>,
+    pub start: usize,
+    pub current: usize,
+    pub line: usize,
+    pub keywords: HashMap<&'static str, TokenType>,
 }
 
 impl Scanner {
-    fn new(source: Vec<u8>) -> Scanner {
+    pub fn new(source: Vec<u8>) -> Scanner {
         Scanner {
             source,
             tokens: Vec::new(),
@@ -160,9 +160,7 @@ impl Scanner {
         while !self.is_at_end() && self.peek().is_ascii_alphanumeric() {
             self.advance();
         }
-        let identifier: String = self.get_curr_string();
 
-        identifier;
         self.add_token(TokenType::Identifier)
     }
 
@@ -179,6 +177,8 @@ impl Scanner {
             b'.' => self.add_token(TokenType::Dot),
             b'-' => self.add_token(TokenType::Minus),
             b'+' => self.add_token(TokenType::Plus),
+            b'*' => self.add_token(TokenType::Star),
+            b'/' => self.add_token(TokenType::Slash),
             b';' => self.add_token(TokenType::Semicolon),
             b'r' => self.add_token(TokenType::Star),
 
@@ -226,7 +226,7 @@ impl Scanner {
     }
 
     // @desc Call scan_token till it's done with self.source.
-    fn scan_tokens(&mut self) -> &Vec<Token> {
+    pub fn scan_tokens(&mut self) -> &Vec<Token> {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();
@@ -239,7 +239,7 @@ impl Scanner {
 
     pub fn print_tokens(&self) {
         println!("\nScanned Tokens: ");
-        println!("============================================================================================\n");
+        println!("============================================================================================");
         let mut line_no = 0;
 
         for token in &self.tokens {
@@ -252,32 +252,33 @@ impl Scanner {
         }
         println!("\n============================================================================================\n");
     }
+
+    pub fn tokens_from_str(source: &str, display: bool) -> Vec<Token> {
+        let mut scanner = Scanner::new(source.as_bytes().to_vec());
+        scanner.scan_tokens();
+
+        if display {
+            scanner.print_tokens();
+        }
+
+        scanner.tokens
+    }
+
+    pub fn tokens_from_bytes(source: &[u8]) -> Vec<Token> {
+        let mut scanner = Scanner::new(source.to_vec());
+        scanner.scan_tokens();
+        scanner.tokens
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn tokens_from_string(source: &str) -> Vec<Token> {
-        let mut scanner = Scanner::new(source.as_bytes().to_vec());
-        scanner.scan_tokens();
-        scanner.print_tokens();
-
-        scanner.tokens
-    }
-
-    fn tokens_from_bytes(source: &[u8]) -> Vec<Token> {
-        let mut scanner = Scanner::new(source.to_vec());
-        scanner.scan_tokens();
-        scanner.tokens
-    }
 
     #[test]
     fn correct_number_of_tokens() {
-        let tokens = tokens_from_string("var \n x = if (5 > 7) \n 8 else 9.7823");
+        let tokens = Scanner::tokens_from_str("var \n x = if (5 * 7) \n 8 else 9.7823", false);
 
-        for token in &tokens {
-            println!("{:?}", token)
-        }
         // assert_eq!(res.len(), 4, "Scans correct number of tokens")
     }
 }

@@ -28,10 +28,12 @@ impl Parser {
         self.current += 1;
     }
 
+    /// Checks if self.current is at the end.
     fn is_at_end(&self) -> bool {
         self.current >= self.tokens.len()
     }
 
+    /// Returns the next token without consuming it.
     fn peek(&self) -> Option<Token> {
         if self.is_at_end() {
             return None;
@@ -39,6 +41,7 @@ impl Parser {
         Some(self.tokens[self.current].clone())
     }
 
+    /// Return the token before the current token.
     fn previous(&self) -> Option<Token> {
         if self.current == 0 {
             return None;
@@ -46,6 +49,12 @@ impl Parser {
         Some(self.tokens[self.current - 1].clone())
     }
 
+    /// Gets the line number of the previous token.
+    fn get_line_no(&self) -> usize {
+        self.previous().unwrap().line
+    }
+
+    /// Return the token at current and increments self.current.
     fn advance(&mut self) -> Option<Token> {
         if self.is_at_end() {
             return None;
@@ -54,6 +63,7 @@ impl Parser {
         self.previous()
     }
 
+    /// Checks if token_type matches the token type of the next token without modifying self.current.
     fn check(&self, token_type: &TokenType) -> bool {
         match self.peek() {
             Some(token) => &token.token_type == token_type,
@@ -61,7 +71,7 @@ impl Parser {
         }
     }
 
-    /// Checks if next Token matches any of the Tokens in tokens
+    /// Checks if any of the token_types matches the token_type of the next token
     fn matches(&mut self, token_types: Vec<TokenType>) -> bool {
         for token_type in &token_types {
             if self.check(token_type) {
@@ -86,43 +96,50 @@ impl Parser {
             TokenType::True,
             TokenType::Nil,
         ]) {
-            return Ok(Expression::Literal(
-                curr_token.literal.unwrap(),
-            ));
+            return Ok(Expression::Literal(curr_token.literal.unwrap()));
         }
 
         if self.matches(vec![TokenType::LeftParen]) {
             let expr = self.expression()?;
-            
+
+            if self.matches(vec![TokenType::RightParen]) {
+                return Ok(Expression::Grouping(Box::new(expr)))
+            } else {
+                return Err(ParserError::ExpectedClosingBrace(self.get_line_no()))
+            };
         }
 
-        Err(ParserError::Iono)
+        Err(ParserError::UnexpectedToken(self.get_line_no()))
     }
 
     /// unary -> ( "!" | "-" ) unary | primary ;
     fn unary(&mut self) -> Result<Expression, ParserError> {
         if self.matches(vec![TokenType::Bang, TokenType::Minus]) {
             let prefix_op = self.previous().unwrap();
-            let rhs = self.expression()?;
+            let rhs = self.unary()?;
 
-            return Ok(Expression::Unary { prefix_op, rhs: Box::new(rhs)});
+            // println!("In unary: \nPREFIX {} \nRHS: {}", prefix_op, rhs)
+            return Ok(Expression::Unary {
+                prefix_op,
+                rhs: Box::new(rhs),
+            });
+        } else {
+            self.primary()
         }
-
-        Err(ParserError::Iono)
     }
 
     /// factor -> unary ( ( "/" | "*" ) factor )* ;
     fn factor(&mut self) -> Result<Expression, ParserError> {
-        let expr = self.unary()?;
+        let mut expr = self.unary()?;
 
-        while self.matches(vec![TokenType::Minus, TokenType::Plus]) {
-            let infix_op = self.previous();
+        while self.matches(vec![TokenType::Slash, TokenType::Star]) {
+            let infix_op = self.previous().unwrap();
 
             let rhs = self.factor()?;
 
             expr = Expression::Binary {
                 lhs: Box::new(expr),
-                infix_op: infix_op.unwrap(),
+                infix_op,
                 rhs: Box::new(rhs),
             };
         }
@@ -133,21 +150,92 @@ impl Parser {
     /// TODO ODODODODODODODODODODODODODODODODO
     /// term -> factor ( ( "-" | "+" ) factor )* ;
     fn term(&mut self) -> Result<Expression, ParserError> {
-        todo!()
+        let mut expr = self.factor()?;
+
+        while self.matches(vec![TokenType::Minus, TokenType::Plus]) {
+            let infix_op = self.previous().unwrap();
+
+            let rhs = self.factor()?;
+
+            expr = Expression::Binary {
+                lhs: Box::new(expr),
+                infix_op,
+                rhs: Box::new(rhs),
+            };
+        }
+
+        Ok(expr)
     }
 
+    /// comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+    fn comparison(&mut self) -> Result<Expression, ParserError> {
+        let mut expr = self.term()?;
+
+        while self.matches(vec![TokenType::Less, TokenType::LessEqual, TokenType::Greater, TokenType::GreaterEqual]) {
+            let infix_op = self.previous().unwrap();
+
+            let rhs = self.term()?;
+
+            expr = Expression::Binary {
+                lhs: Box::new(expr),
+                infix_op,
+                rhs: Box::new(rhs),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    /// equality -> comparison ( ( "!=" | "==" ) comparison)
     fn equality(&mut self) -> Result<Expression, ParserError> {
-        todo!()
+        let mut expr = self.comparison()?;
+
+        while self.matches(vec![TokenType::BangEqual, TokenType::EqualEqual]) {
+            let infix_op = self.previous().unwrap();
+
+            let rhs = self.comparison()?;
+
+            expr = Expression::Binary {
+                lhs: Box::new(expr),
+                infix_op,
+                rhs: Box::new(rhs),
+            };
+        }
+
+        Ok(expr)
     }
 
     /// expression -> equality
     fn expression(&mut self) -> Result<Expression, ParserError> {
-        todo!()
+        self.equality()
     }
+
 }
 
+#[derive(Debug, Clone)]
 pub enum ParserError {
-    Iono,
-    Hmmm,
+    ExpectedOneOf(usize, Vec<String>),
+    ExpectedClosingBrace(usize),
+    UnexpectedToken(usize),
+    // Iono(usize, String),
+    // Hmmm,
     Eof,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scanner::{Scanner, self};
+
+    #[test]
+    fn parses() {
+        let input = "5 * (4 * 3) / 3 / 7";
+        println!("\nInput String: \n================ \n'{}'\n", input);
+
+        let tokens = Scanner::tokens_from_str(input, true);
+
+        let expr = Parser::new(tokens).expression();
+        println!("RAW: \n\n{:?}\n\n", expr.clone().unwrap());
+        println!("PRETTY_PRINTING: \n\n{}\n", expr.clone().unwrap());
+    }
 }

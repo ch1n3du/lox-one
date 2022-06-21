@@ -4,7 +4,7 @@ use crate::lox_literal::LoxLiteral;
 use crate::token::Token;
 use crate::token_type::TokenType;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Literal(LoxLiteral),
     Operator(TokenType),
@@ -27,9 +27,9 @@ impl fmt::Display for Expression {
         match self {
             Literal(literal) => write!(f, "{}", literal),
             Operator(token_type) => write!(f, "{}", token_type),
-            Grouping(grouping) => write!(f, "grouping {}", grouping),
+            Grouping(grouping) => write!(f, "(grouping {})", grouping),
             Unary { prefix_op, rhs } => write!(f, "({} {})", prefix_op.token_type, rhs),
-            Binary { lhs, infix_op, rhs } => write!(f, "({} {} {})", infix_op, lhs, rhs),
+            Binary { lhs, infix_op, rhs } => write!(f, "({} {} {})", infix_op.token_type, lhs, rhs),
         }
     }
 }
@@ -56,14 +56,4 @@ mod tests {
         lox_literal::LoxLiteral,
         token_type::TokenType,
     };
-
-    #[test]
-    fn pretty_prints_correctly() {
-        let ast = Ast::Expression(Expression::Binary {
-            lhs: Box::new(Expression::Literal(LoxLiteral::Boolean(true))),
-            infix_op: Box::new(Expression::Operator(TokenType::And)),
-            rhs: Box::new(Expression::Literal(LoxLiteral::Boolean(false))),
-        });
-        println!("{}", ast);
-    }
 }

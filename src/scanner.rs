@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::token::{Token};
-use crate::token_type::TokenType;
 use crate::lox_literal::LoxLiteral;
+use crate::token::Token;
+use crate::token_type::TokenType;
 
 pub struct Scanner {
     source: Vec<u8>,
@@ -134,7 +134,10 @@ impl Scanner {
             self.advance();
         }
 
-        self.add_token_with_literal(TokenType::String, Some(LoxLiteral::String(self.get_curr_string())))
+        self.add_token_with_literal(
+            TokenType::String,
+            Some(LoxLiteral::String(self.get_curr_string())),
+        )
     }
 
     fn scan_number(&mut self) {

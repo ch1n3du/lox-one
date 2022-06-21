@@ -15,7 +15,7 @@ pub enum Expression {
     },
     Binary {
         lhs: Box<Expression>,
-        infix_op: Box<Expression>,
+        infix_op: Token,
         rhs: Box<Expression>,
     },
 }

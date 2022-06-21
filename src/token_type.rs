@@ -67,7 +67,7 @@ impl fmt::Display for TokenType {
             Greater => write!(f, ">"),
             GreaterEqual => write!(f, ">="),
             And => write!(f, "and"),
-            Or  => write!(f, "or"),
+            Or => write!(f, "or"),
             Plus => write!(f, "+"),
             Minus => write!(f, "-"),
             Star => write!(f, "*"),

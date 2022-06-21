@@ -1,5 +1,5 @@
-use crate::token_type::TokenType;
 use crate::lox_literal::LoxLiteral;
+use crate::token_type::TokenType;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {

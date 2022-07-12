@@ -5,6 +5,7 @@ pub enum LoxLiteral {
     Boolean(bool),
     Number(f64),
     String(String),
+    Identifier(String),
     Nil,
 }
 
@@ -15,7 +16,8 @@ impl fmt::Display for LoxLiteral {
         match self {
             Boolean(b) => write!(f, "{}", b),
             Number(n) => write!(f, "{}", n),
-            String(s) => write!(f, "{}", s),
+            String(s) => write!(f, "'{}'", s),
+            Identifier(id) => write!(f, "{}", id),
             Nil => write!(f, "nil"),
         }
     }

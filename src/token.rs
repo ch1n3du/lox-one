@@ -3,24 +3,17 @@ use crate::token_type::TokenType;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
-    pub token_type: TokenType,
-    pub lexeme: Option<String>,
-    pub literal: Option<LoxLiteral>,
     pub line: usize,
+    pub token_type: TokenType,
+    pub literal: Option<LoxLiteral>,
 }
 
 impl Token {
-    pub fn new(
-        token_type: TokenType,
-        lexeme: Option<String>,
-        literal: Option<LoxLiteral>,
-        line: usize,
-    ) -> Token {
+    pub fn new(line: usize, token_type: TokenType, literal: Option<LoxLiteral>) -> Token {
         Token {
-            token_type,
-            lexeme,
-            literal,
             line,
+            token_type,
+            literal,
         }
     }
 }

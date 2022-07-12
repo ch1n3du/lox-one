@@ -42,31 +42,29 @@ impl Scanner {
         }
     }
 
-    // Scanner helper functions
-
-    // @desc Checks self.current is at the end of source.
+    // Checks self.current is at the end of source.
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
 
-    // @desc Yields value at self.current and increment self.current.
+    // Yields value at self.current and increment self.current.
     fn advance(&mut self) -> u8 {
         let res = self.source[self.current];
         self.current += 1;
         res
     }
 
-    // @desc Looks ahead at value at self.current
+    // Looks ahead at value at self.current
     fn peek(&self) -> u8 {
         self.source[self.current]
     }
 
-    // @desc Looks ahead twiec at value at self.current + 1
+    // Looks ahead twiec at value at self.current + 1
     fn peek_twice(&self) -> u8 {
         self.source[self.current + 1]
     }
 
-    // @desc Checks if the byte at self.current is equal to expected.
+    // Checks if the byte at self.current is equal to expected.
     fn matches_next(&mut self, expected: u8) -> bool {
         if self.is_at_end() {
             return false;
@@ -82,10 +80,11 @@ impl Scanner {
     fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<LoxLiteral>) {
         let tok = match literal {
             Some(_) => {
-                let lexeme = Some(self.get_curr_string());
-                Token::new(token_type, lexeme, literal, self.line)
+                // let lexeme = Some(self.get_curr_string());
+                // TODO Readd Lexeme
+                Token::new(self.line, token_type, literal)
             }
-            _ => Token::new(token_type, None, None, self.line),
+            None => Token::new(self.line, token_type, None),
         };
 
         self.tokens.push(tok)
@@ -95,6 +94,7 @@ impl Scanner {
         self.add_token_with_literal(token_type, None)
     }
 
+    /// Gets the string between self.start and self.current.
     fn get_curr_string(&self) -> String {
         self.source[self.start..self.current]
             .iter()
@@ -161,7 +161,26 @@ impl Scanner {
             self.advance();
         }
 
-        self.add_token(TokenType::Identifier)
+        let literal = self.get_curr_string();
+
+        if let Some(token_type) = self.keywords.get(literal.as_str()) {
+            let token_type = token_type.clone();
+
+            match token_type {
+                TokenType::True => {
+                    self.add_token_with_literal(token_type, Some(LoxLiteral::Boolean(true)))
+                }
+                TokenType::False => {
+                    self.add_token_with_literal(token_type, Some(LoxLiteral::Boolean(false)))
+                }
+                _ => self.add_token(token_type),
+            }
+        } else {
+            self.add_token_with_literal(
+                TokenType::Identifier,
+                Some(LoxLiteral::Identifier(literal)),
+            )
+        }
     }
 
     // @desc Calls advance and matches to handle the token.
@@ -175,12 +194,12 @@ impl Scanner {
             b'}' => self.add_token(TokenType::RightBrace),
             b',' => self.add_token(TokenType::Comma),
             b'.' => self.add_token(TokenType::Dot),
+            b'?' => self.add_token(TokenType::QuestionMark),
             b'-' => self.add_token(TokenType::Minus),
             b'+' => self.add_token(TokenType::Plus),
             b'*' => self.add_token(TokenType::Star),
-            b'/' => self.add_token(TokenType::Slash),
             b';' => self.add_token(TokenType::Semicolon),
-            b'r' => self.add_token(TokenType::Star),
+            b':' => self.add_token(TokenType::Colon),
 
             b'!' => {
                 let token_type = if self.matches_next(b'=') {
@@ -214,6 +233,7 @@ impl Scanner {
                 };
                 self.add_token(token_type);
             }
+            // TODO
             b'/' => self.scan_comment(),
             b'"' => self.scan_string(),
             b if b.is_ascii_digit() => self.scan_number(),
@@ -242,13 +262,13 @@ impl Scanner {
         println!("============================================================================================");
         let mut line_no = 0;
 
-        for token in &self.tokens {
+        for (index, token) in self.tokens.iter().enumerate() {
             if token.line != line_no {
                 line_no = token.line;
                 println!("\nLine {}", line_no);
                 println!("==================");
             }
-            println!("->  {:?}", token);
+            println!("{} ->  {:?}", index, token);
         }
         println!("\n============================================================================================\n");
     }

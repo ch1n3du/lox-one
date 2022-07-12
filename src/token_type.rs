@@ -1,7 +1,5 @@
 use std::fmt;
 
-use crate::lox_literal::LoxLiteral;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     //Single character tokens.
@@ -11,8 +9,10 @@ pub enum TokenType {
     RightBrace,
     Comma,
     Dot,
+    QuestionMark,
     Minus,
     Plus,
+    Colon,
     Semicolon,
     Slash,
     Star,
@@ -72,6 +72,10 @@ impl fmt::Display for TokenType {
             Minus => write!(f, "-"),
             Star => write!(f, "*"),
             Slash => write!(f, "/"),
+            Dot => write!(f, "."),
+            QuestionMark => write!(f, "?"),
+            Colon => write!(f, ":"),
+            Semicolon => write!(f, ";"),
             _ => write!(f, ""),
         }
     }

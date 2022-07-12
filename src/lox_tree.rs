@@ -1,28 +1,33 @@
-use std::fmt;
+use std::fmt::{self, write};
 
 use crate::lox_literal::LoxLiteral;
 use crate::token::Token;
 use crate::token_type::TokenType;
 
 #[derive(Debug, Clone)]
-pub enum Expression {
+pub enum LoxTree {
     Literal(LoxLiteral),
     Operator(TokenType),
-    Grouping(Box<Expression>),
+    Grouping(Box<LoxTree>),
     Unary {
         prefix_op: Token,
-        rhs: Box<Expression>,
+        rhs: Box<LoxTree>,
     },
     Binary {
-        lhs: Box<Expression>,
+        lhs: Box<LoxTree>,
         infix_op: Token,
-        rhs: Box<Expression>,
+        rhs: Box<LoxTree>,
+    },
+    Ternary {
+        condition: Box<LoxTree>,
+        result_1: Box<LoxTree>,
+        result_2: Box<LoxTree>,
     },
 }
 
-impl fmt::Display for Expression {
+impl fmt::Display for LoxTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Expression::*;
+        use LoxTree::*;
 
         match self {
             Literal(literal) => write!(f, "{}", literal),
@@ -30,30 +35,14 @@ impl fmt::Display for Expression {
             Grouping(grouping) => write!(f, "(grouping {})", grouping),
             Unary { prefix_op, rhs } => write!(f, "({} {})", prefix_op.token_type, rhs),
             Binary { lhs, infix_op, rhs } => write!(f, "({} {} {})", infix_op.token_type, lhs, rhs),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Ast {
-    Expression(Expression),
-}
-
-impl fmt::Display for Ast {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Ast::*;
-
-        match self {
-            Expression(expr) => write!(f, "{}", expr),
+            Ternary {
+                condition,
+                result_1,
+                result_2,
+            } => write!(f, "(ternary {} ? {} : {})", condition, result_1, result_2),
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{
-        ast::{Ast, Expression},
-        lox_literal::LoxLiteral,
-        token_type::TokenType,
-    };
-}
+mod tests {}

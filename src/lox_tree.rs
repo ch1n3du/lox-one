@@ -1,4 +1,4 @@
-use std::fmt::{self, write};
+use std::fmt;
 
 use crate::lox_literal::LoxLiteral;
 use crate::token::Token;

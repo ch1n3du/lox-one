@@ -19,7 +19,7 @@ fn parse_str(source: &str) {
 
             match interpreter.evaluate(&ast) {
                 Ok(res) => println!("\nResult: {}", res),
-                Err(err) => println!("\nError: {}", err)
+                Err(err) => println!("\nError: {}", err),
             }
         }
     }

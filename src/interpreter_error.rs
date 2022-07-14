@@ -1,7 +1,7 @@
 use std::fmt;
 
 pub enum InterpreterError {
-    GenericError{line_no: usize, reason: String},
+    GenericError { line_no: usize, reason: String },
 }
 
 impl fmt::Display for InterpreterError {

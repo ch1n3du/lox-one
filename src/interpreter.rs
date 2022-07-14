@@ -26,15 +26,24 @@ impl Interpreter {
                 match op.token_type {
                     Minus => match rhs.as_ref() {
                         Literal(LoxLiteral::Number(n)) => Ok(LoxLiteral::Number(-n)),
-                        _ => Err(RuntimeError::GenericError("Expected a number.".to_string(), op.line)),
+                        _ => Err(RuntimeError::GenericError(
+                            "Expected a number.".to_string(),
+                            op.line,
+                        )),
                     },
                     Bang => match rhs.as_ref() {
                         Literal(LoxLiteral::Boolean(b)) => Ok(LoxLiteral::Boolean(!b)),
-                        _ => Err(RuntimeError::GenericError("Expected a boolean expression".to_string(), op.line))
+                        _ => Err(RuntimeError::GenericError(
+                            "Expected a boolean expression".to_string(),
+                            op.line,
+                        )),
                     },
-                    _ => Err(RuntimeError::GenericError("Unexpected in unary section".to_string(), op.line)) 
+                    _ => Err(RuntimeError::GenericError(
+                        "Unexpected in unary section".to_string(),
+                        op.line,
+                    )),
                 }
-            },
+            }
             Binary { lhs, op, rhs } => {
                 let (lhs, rhs) = (self.evaluate(lhs)?, self.evaluate(rhs)?);
 
@@ -76,7 +85,10 @@ impl Interpreter {
                     (LoxLiteral::String(s1), LoxLiteral::String(s2), Plus) => {
                         Ok(LoxLiteral::String(s1 + s2.as_str()))
                     }
-                    _ => Err(RuntimeError::GenericError("Don't really know".to_string(), op.line)),
+                    _ => Err(RuntimeError::GenericError(
+                        "Don't really know".to_string(),
+                        op.line,
+                    )),
                 }
             }
             Ternary {
@@ -93,7 +105,6 @@ impl Interpreter {
         }
     }
 }
-
 
 pub enum RuntimeError {
     GenericError(String, usize),

@@ -2,15 +2,14 @@
 "Grammar, which knows how to control even kings."
                                     - Moliere
 */
-pub mod parser_errors;
 
 use crate::token::Token;
 use crate::token_type::TokenType;
 
+use crate::ast::Expr;
 use crate::lox_literal::LoxLiteral;
-use crate::lox_tree::LoxTree;
 
-use parser_errors::ParserError;
+use crate::parser_errors::ParserError;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -18,7 +17,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    fn new(tokens: Vec<Token>) -> Parser {
+    pub fn new(tokens: Vec<Token>) -> Parser {
         Parser { tokens, current: 0 }
     }
 
@@ -146,12 +145,12 @@ impl Parser {
     }
 
     /// primary -> NUMBER | STRING | "true" | "false" | "nil"
-    ///          | "("LoxTree  ")" ;
-    fn primary(&mut self) -> Result<LoxTree, ParserError> {
+    ///          | "("Expr  ")" ;
+    fn primary(&mut self) -> Result<Expr, ParserError> {
         // let curr_token = self.peek().unwrap();
 
         if self.matches(vec![TokenType::Semicolon]) {
-            return Ok(LoxTree::Literal(LoxLiteral::Nil));
+            return Ok(Expr::Literal(LoxLiteral::Nil));
         }
 
         if self.matches(vec![
@@ -161,7 +160,7 @@ impl Parser {
             TokenType::True,
             TokenType::Nil,
         ]) {
-            return Ok(LoxTree::Literal(self.previous().unwrap().literal.unwrap()));
+            return Ok(Expr::Literal(self.previous().unwrap().literal.unwrap()));
         }
 
         if self.matches(vec![TokenType::LeftParen]) {
@@ -171,7 +170,7 @@ impl Parser {
                 ParserError::ExpectedClosingBrace(self.get_line_no()),
             )?;
 
-            return Ok(LoxTree::Grouping(Box::new(expr)));
+            return Ok(Expr::Grouping(Box::new(expr)));
         }
 
         match self.consume(&TokenType::Eof, ParserError::Eof(self.get_line_no())) {
@@ -183,14 +182,14 @@ impl Parser {
     }
 
     /// unary -> ( "!" | "-" ) unary | primary ;
-    fn unary(&mut self) -> Result<LoxTree, ParserError> {
+    fn unary(&mut self) -> Result<Expr, ParserError> {
         if self.matches(vec![TokenType::Bang, TokenType::Minus]) {
-            let prefix_op = self.previous().unwrap();
+            let op = self.previous().unwrap();
             let rhs = self.unary()?;
 
             // println!("In unary: \nPREFIX {} \nRHS: {}", prefix_op, rhs)
-            Ok(LoxTree::Unary {
-                prefix_op,
+            Ok(Expr::Unary {
+                op,
                 rhs: Box::new(rhs),
             })
         } else {
@@ -199,17 +198,17 @@ impl Parser {
     }
 
     /// factor -> unary ( ( "/" | "*" ) factor )* ;
-    fn factor(&mut self) -> Result<LoxTree, ParserError> {
+    fn factor(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.unary()?;
 
         while self.matches(vec![TokenType::Slash, TokenType::Star]) {
-            let infix_op = self.previous().unwrap();
+            let op = self.previous().unwrap();
 
             let rhs = self.factor()?;
 
-            expr = LoxTree::Binary {
+            expr = Expr::Binary {
                 lhs: Box::new(expr),
-                infix_op,
+                op,
                 rhs: Box::new(rhs),
             };
         }
@@ -219,17 +218,17 @@ impl Parser {
 
     /// TODO ODODODODODODODODODODODODODODODODO
     /// term -> factor ( ( "-" | "+" ) factor )* ;
-    fn term(&mut self) -> Result<LoxTree, ParserError> {
+    fn term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.factor()?;
 
         while self.matches(vec![TokenType::Minus, TokenType::Plus]) {
-            let infix_op = self.previous().unwrap();
+            let op = self.previous().unwrap();
 
             let rhs = self.factor()?;
 
-            expr = LoxTree::Binary {
+            expr = Expr::Binary {
                 lhs: Box::new(expr),
-                infix_op,
+                op,
                 rhs: Box::new(rhs),
             };
         }
@@ -238,7 +237,7 @@ impl Parser {
     }
 
     /// comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-    fn comparison(&mut self) -> Result<LoxTree, ParserError> {
+    fn comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.term()?;
 
         while self.matches(vec![
@@ -247,13 +246,13 @@ impl Parser {
             TokenType::Greater,
             TokenType::GreaterEqual,
         ]) {
-            let infix_op = self.previous().unwrap();
+            let op = self.previous().unwrap();
 
             let rhs = self.term()?;
 
-            expr = LoxTree::Binary {
+            expr = Expr::Binary {
                 lhs: Box::new(expr),
-                infix_op,
+                op,
                 rhs: Box::new(rhs),
             };
         }
@@ -262,17 +261,17 @@ impl Parser {
     }
 
     /// equality -> comparison ( ( "!=" | "==" ) comparison)*
-    fn equality(&mut self) -> Result<LoxTree, ParserError> {
+    fn equality(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.comparison()?;
 
         while self.matches(vec![TokenType::BangEqual, TokenType::EqualEqual]) {
-            let infix_op = self.previous().unwrap();
+            let op = self.previous().unwrap();
 
             let rhs = self.comparison()?;
 
-            expr = LoxTree::Binary {
+            expr = Expr::Binary {
                 lhs: Box::new(expr),
-                infix_op,
+                op,
                 rhs: Box::new(rhs),
             };
         }
@@ -280,8 +279,8 @@ impl Parser {
         Ok(expr)
     }
 
-    /// ternary ->LoxTree  ( "?" ternary ":" ternary )?
-    fn ternary(&mut self) -> Result<LoxTree, ParserError> {
+    /// ternary ->Expr  ( "?" ternary ":" ternary )?
+    fn ternary(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.equality()?;
 
         if self.matches(vec![TokenType::QuestionMark]) {
@@ -289,7 +288,7 @@ impl Parser {
 
             if self.matches(vec![TokenType::Colon]) {
                 let result_2 = self.ternary()?;
-                expr = LoxTree::Ternary {
+                expr = Expr::Ternary {
                     condition: Box::new(expr),
                     result_1: Box::new(result_1),
                     result_2: Box::new(result_2),
@@ -307,8 +306,8 @@ impl Parser {
         Ok(expr)
     }
 
-    ///LoxTree  -> equality
-    fn expression(&mut self) -> Result<LoxTree, ParserError> {
+    ///Expr  -> equality
+    pub fn expression(&mut self) -> Result<Expr, ParserError> {
         let expr = self.ternary()?;
         // println!("Before consume");
         // self.consume(&TokenType::Semicolon, ParserError::ExpectedOneOf(self.get_line_no(), vec![TokenType::Semicolon]));
@@ -319,7 +318,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::Parser;
-    use crate::{parser::parser_errors::ParserError, scanner::Scanner, token_type::TokenType};
+    use crate::{parser_errors::ParserError, scanner::Scanner, token_type::TokenType};
 
     #[test]
     fn parses() {
@@ -339,7 +338,7 @@ mod tests {
 
         println!(
             "{}",
-            ParserError::ExpectedOneOf(1, vec![TokenType::Colon, TokenType::Dot, ])
+            ParserError::ExpectedOneOf(1, vec![TokenType::Colon, TokenType::Dot,])
         );
         // println!("\nRAW: \n{:?}\n", expr.clone());
         // println!("PRETTY_PRINTING: \n{}\n", expr.clone().unwrap());

@@ -28,7 +28,7 @@ impl fmt::Display for ParserError {
             ExpectedOneOf(line_no, token_types) => match token_types.len() {
                 1 => write!(f, "Expected '{}', on line {}", token_types[0], line_no),
                 _ => {
-                    let prefix = token_types[1..token_types.len()-1]
+                    let prefix = token_types[1..token_types.len() - 1]
                         .iter()
                         .fold(String::from(" "), |acc, tok_type| {
                             format!("{}, '{}'", acc, tok_type)

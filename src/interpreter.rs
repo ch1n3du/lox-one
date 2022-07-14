@@ -4,7 +4,7 @@ use crate::lox_literal::LoxLiteral;
 
 use crate::token_type::TokenType;
 
-use crate::ast::Expr;
+use crate::ast::{Expr, Stmt};
 
 pub struct Interpreter {}
 
@@ -26,19 +26,19 @@ impl Interpreter {
                 match op.token_type {
                     Minus => match rhs.as_ref() {
                         Literal(LoxLiteral::Number(n)) => Ok(LoxLiteral::Number(-n)),
-                        _ => Err(RuntimeError::GenericError(
+                        _ => Err(RuntimeError::Generic(
                             "Expected a number.".to_string(),
                             op.line,
                         )),
                     },
                     Bang => match rhs.as_ref() {
                         Literal(LoxLiteral::Boolean(b)) => Ok(LoxLiteral::Boolean(!b)),
-                        _ => Err(RuntimeError::GenericError(
+                        _ => Err(RuntimeError::Generic(
                             "Expected a boolean expression".to_string(),
                             op.line,
                         )),
                     },
-                    _ => Err(RuntimeError::GenericError(
+                    _ => Err(RuntimeError::Generic(
                         "Unexpected in unary section".to_string(),
                         op.line,
                     )),
@@ -60,6 +60,9 @@ impl Interpreter {
                         Ok(LoxLiteral::Number(l * r))
                     }
                     (LoxLiteral::Number(l), LoxLiteral::Number(r), Slash) => {
+                        if r == 0.0 {
+                            return Err(RuntimeError::DivisionByZero(op.line));
+                        }
                         Ok(LoxLiteral::Number(l / r))
                     }
                     (LoxLiteral::Number(l), LoxLiteral::Number(r), EqualEqual) => {
@@ -85,7 +88,7 @@ impl Interpreter {
                     (LoxLiteral::String(s1), LoxLiteral::String(s2), Plus) => {
                         Ok(LoxLiteral::String(s1 + s2.as_str()))
                     }
-                    _ => Err(RuntimeError::GenericError(
+                    _ => Err(RuntimeError::Generic(
                         "Don't really know".to_string(),
                         op.line,
                     )),
@@ -104,17 +107,42 @@ impl Interpreter {
             }
         }
     }
+
+    fn execute(&mut self, statement: &Stmt) {
+        use Stmt::*;
+        match statement {
+            PrintStmt(expr) => println!(
+                "Output: {}",
+                self.evaluate(&expr)
+                    .unwrap_or_else(|err| panic!("Error: {}", err))
+            ),
+            ExprStmt(expr) => {
+                self.evaluate(&expr)
+                    .unwrap_or_else(|err| panic!("Error: {}", err));
+            }
+        }
+    }
+
+    pub fn interpret(&mut self, statements: Vec<Stmt>) {
+        for statement in statements {
+            self.execute(&statement)
+        }
+    }
 }
 
 pub enum RuntimeError {
-    GenericError(String, usize),
+    Generic(String, usize),
+    DivisionByZero(usize),
 }
 
 impl fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use RuntimeError::*;
         match self {
-            GenericError(reason, line_no) => write!(f, "Error: {}, on line {}", reason, line_no),
+            Generic(reason, line_no) => write!(f, "Error: {}, on line {}", reason, line_no),
+            DivisionByZero(line_no) => {
+                write!(f, "Error: Division by zero error, on line {}", line_no)
+            }
         }
     }
 }

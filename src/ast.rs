@@ -41,5 +41,11 @@ impl fmt::Display for Expr {
     }
 }
 
+#[derive(Debug)]
+pub enum Stmt {
+    PrintStmt(Expr),
+    ExprStmt(Expr),
+}
+
 #[cfg(test)]
 mod tests {}

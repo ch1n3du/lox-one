@@ -6,7 +6,7 @@
 use crate::token::Token;
 use crate::token_type::TokenType;
 
-use crate::ast::Expr;
+use crate::ast::{Expr, Stmt};
 use crate::lox_literal::LoxLiteral;
 
 use crate::parser_errors::ParserError;
@@ -304,6 +304,40 @@ impl Parser {
         }
 
         Ok(expr)
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, ParserError> {
+        Ok(Stmt::PrintStmt(self.expression()?))
+    }
+
+    fn expr_statement(&mut self) -> Result<Stmt, ParserError> {
+        Ok(Stmt::ExprStmt(self.expression()?))
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ParserError> {
+        let stmt: Stmt;
+
+        if self.matches(vec![TokenType::Print]) {
+            stmt = self.print_statement()?;
+        } else {
+            stmt = self.expr_statement()?;
+        }
+
+        self.consume(
+            &TokenType::Semicolon,
+            ParserError::ExpectedOneOf(self.get_line_no(), vec![TokenType::Semicolon]),
+        )?;
+        Ok(stmt)
+    }
+
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+        let mut statements: Vec<Stmt> = Vec::new();
+
+        while !self.is_at_end() {
+            statements.push(self.statement()?)
+        }
+
+        Ok(statements)
     }
 
     ///Expr  -> equality

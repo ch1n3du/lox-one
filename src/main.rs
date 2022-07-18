@@ -1,7 +1,7 @@
 use lox_one::{interpreter::Interpreter, parser::Parser, scanner::Scanner};
 fn main() {
-    	//this is a main function
-	parse_str("print \"Hello world\";");
+    //this is a main function
+    parse_str("print \"Hello world\";");
 }
 
 fn parse_str(source: &str) {

@@ -24,15 +24,15 @@ impl Interpreter {
                 use TokenType::*;
 
                 match op.token_type {
-                    Minus => match rhs.as_ref() {
-                        Literal(LoxLiteral::Number(n)) => Ok(LoxLiteral::Number(-n)),
+                    Minus => match self.evaluate(&rhs)? {
+                        LoxLiteral::Number(n) => Ok(LoxLiteral::Number(-n)),
                         _ => Err(RuntimeError::Generic(
                             "Expected a number.".to_string(),
                             op.line,
                         )),
                     },
-                    Bang => match rhs.as_ref() {
-                        Literal(LoxLiteral::Boolean(b)) => Ok(LoxLiteral::Boolean(!b)),
+                    Bang => match self.evaluate(&rhs)? {
+                        LoxLiteral::Boolean(b) => Ok(LoxLiteral::Boolean(!b)),
                         _ => Err(RuntimeError::Generic(
                             "Expected a boolean expression".to_string(),
                             op.line,

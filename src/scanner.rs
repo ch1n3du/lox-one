@@ -246,7 +246,7 @@ impl Scanner {
     }
 
     // @desc Call scan_token till it's done with self.source.
-    pub fn scan_tokens(&mut self) -> &Vec<Token> {
+    pub fn scan_tokens(&mut self) -> Vec<Token> {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();
@@ -254,7 +254,7 @@ impl Scanner {
 
         self.add_token(TokenType::Eof);
 
-        &self.tokens
+        self.tokens.clone()
     }
 
     pub fn print_tokens(&self) {
@@ -293,12 +293,5 @@ impl Scanner {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn correct_number_of_tokens() {
-        let tokens = Scanner::tokens_from_str("var \n x = if (5 * 7) \n 8 else 9.7823", false);
-
-        // assert_eq!(res.len(), 4, "Scans correct number of tokens")
-    }
+    // use super::*;
 }

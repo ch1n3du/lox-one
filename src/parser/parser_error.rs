@@ -36,20 +36,7 @@ impl fmt::Display for ParserError {
 
                     write!(
                         f,
-                        "Expected one of '{}'{}
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                         or '{}' on line {}",
+                        "Expected one of '{}'{} or '{}' on line {}",
                         token_types[0],
                         prefix,
                         token_types[token_types.len() - 1],

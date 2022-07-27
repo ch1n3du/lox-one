@@ -3,13 +3,15 @@
                                     - Moliere
 */
 
+mod parser_error;
+
 use crate::token::Token;
 use crate::token_type::TokenType;
 
 use crate::ast::{Expr, Stmt};
 use crate::lox_literal::LoxLiteral;
 
-use crate::parser_errors::ParserError;
+use parser_error::ParserError;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -27,7 +29,7 @@ impl Parser {
 
     /// Checks if self.current is at the end.
     fn is_at_end(&self) -> bool {
-        self.current >= self.tokens.len() - 1
+        self.current > self.tokens.len() - 2
     }
 
     /// Returns the next token without consuming it.
@@ -47,7 +49,7 @@ impl Parser {
     }
 
     /// Gets the line number of the previous token.
-    fn get_line_no(&self) -> usize {
+    fn line_no(&self) -> usize {
         self.previous().unwrap().line
     }
 
@@ -56,14 +58,9 @@ impl Parser {
         if self.is_at_end() {
             return None;
         }
-        if self.check(&TokenType::Semicolon) {
-            self.increment_current();
-            let tok = self.previous();
-            self.increment_current();
-            return tok;
-        }
 
         self.increment_current();
+
         self.previous()
     }
 
@@ -75,7 +72,6 @@ impl Parser {
         }
     }
 
-    /// Checks if token_type matches the token type of the next token without modifying self.current.
     fn check_prev(&self, token_type: &TokenType) -> bool {
         match self.previous() {
             Some(token) => &token.token_type == token_type,
@@ -102,16 +98,21 @@ impl Parser {
         token_type: &TokenType,
         error: ParserError,
     ) -> Result<Token, ParserError> {
-        if self.check(token_type) {
-            return match self.advance() {
-                Some(token) => Ok(token),
-                None => Err(ParserError::Eof(self.get_line_no())),
-            };
+        match (self.check(token_type), self.advance()) {
+            (true, Some(token)) => Ok(token),
+            (true, None) => Err(ParserError::Eof(self.line_no())),
+            _ => Err(error),
         }
+    }
 
-        println!("Got here.");
+    /// Consumes a semicolon
+    fn consume_semicolon(&mut self) -> Result<(), ParserError> {
+        self.consume(
+            &TokenType::Semicolon,
+            ParserError::ExpectedOneOf(self.line_no(), vec![TokenType::Semicolon]),
+        )?;
 
-        Err(error)
+        Ok(())
     }
 
     /// Synchronizes on error.
@@ -145,13 +146,9 @@ impl Parser {
     }
 
     /// primary -> NUMBER | STRING | "true" | "false" | "nil"
-    ///          | "("Expr  ")" ;
+    ///          | "("Expr  ")" | IDENTIFIER                  ;
     fn primary(&mut self) -> Result<Expr, ParserError> {
         // let curr_token = self.peek().unwrap();
-
-        if self.matches(vec![TokenType::Semicolon]) {
-            return Ok(Expr::Literal(LoxLiteral::Nil));
-        }
 
         if self.matches(vec![
             TokenType::Number,
@@ -167,18 +164,36 @@ impl Parser {
             let expr = self.expression()?;
             self.consume(
                 &TokenType::RightParen,
-                ParserError::ExpectedClosingBrace(self.get_line_no()),
+                ParserError::ExpectedClosingBrace(self.line_no()),
             )?;
 
             return Ok(Expr::Grouping(Box::new(expr)));
+        } else if self.matches(vec![TokenType::Identifier]) {
+            let tok = self.previous().unwrap();
+            let literal = tok.literal.unwrap();
+
+            match literal {
+                LoxLiteral::Identifier(name) => Ok(Expr::Identifier {
+                    name,
+                    line_no: tok.line,
+                }),
+                _ => panic!("This should be impossible {}", literal),
+            }
+        } else {
+            println!("Invalid Token in primary rule: {:?}", self.peek());
+            Err(ParserError::ExpectedOneOf(
+                self.line_no(),
+                vec![
+                    TokenType::Number,
+                    TokenType::String,
+                    TokenType::False,
+                    TokenType::True,
+                    TokenType::False,
+                ],
+            ))
         }
 
-        match self.consume(&TokenType::Eof, ParserError::Eof(self.get_line_no())) {
-            Ok(_) => Err(ParserError::Eof(self.get_line_no())),
-            Err(e) => Err(e),
-        }
-
-        // Err(ParserError::UnexpectedToken(self.get_line_no(), self.previous().unwrap()))
+        // panic!("\nOh no! \n\tCurrent: {:?}\n\tNext: {:?}", self.previous(), self.peek())
     }
 
     /// unary -> ( "!" | "-" ) unary | primary ;
@@ -187,7 +202,6 @@ impl Parser {
             let op = self.previous().unwrap();
             let rhs = self.unary()?;
 
-            // println!("In unary: \nPREFIX {} \nRHS: {}", prefix_op, rhs)
             Ok(Expr::Unary {
                 op,
                 rhs: Box::new(rhs),
@@ -216,7 +230,6 @@ impl Parser {
         Ok(expr)
     }
 
-    /// TODO ODODODODODODODODODODODODODODODODO
     /// term -> factor ( ( "-" | "+" ) factor )* ;
     fn term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.factor()?;
@@ -279,7 +292,8 @@ impl Parser {
         Ok(expr)
     }
 
-    /// ternary ->Expr  ( "?" ternary ":" ternary )?
+    ///! Breaks the parser "32 ;\n false ? 32 : 323;\n";
+    /// ternary -> expression ( "?" ternary ":" ternary )?
     fn ternary(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.equality()?;
 
@@ -297,7 +311,7 @@ impl Parser {
                 return Ok(expr);
             } else {
                 return Err(ParserError::ExpectedOneOf(
-                    self.get_line_no(),
+                    self.line_no(),
                     vec![TokenType::Colon],
                 ));
             }
@@ -306,75 +320,99 @@ impl Parser {
         Ok(expr)
     }
 
+    /// expression -> ternary
+    fn expression(&mut self) -> Result<Expr, ParserError> {
+        let expr = self.ternary()?;
+        Ok(expr)
+    }
+
+    /// exprStatement  -> expression ";";
+    fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
+        Ok(Stmt::ExprStmt(self.expression()?))
+    }
+
+    /// printStatement -> "print" expression ";";
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
         Ok(Stmt::PrintStmt(self.expression()?))
     }
 
-    fn expr_statement(&mut self) -> Result<Stmt, ParserError> {
-        Ok(Stmt::ExprStmt(self.expression()?))
-    }
+    /// block -> "{" declaration* "}";
+    fn block(&mut self) -> Result<Stmt, ParserError> {
+        let mut declarations: Vec<Stmt> = Vec::new();
 
-    fn statement(&mut self) -> Result<Stmt, ParserError> {
-        let stmt: Stmt;
-
-        if self.matches(vec![TokenType::Print]) {
-            stmt = self.print_statement()?;
-        } else {
-            stmt = self.expr_statement()?;
+        while !self.matches(vec![TokenType::RightBrace]) {
+            declarations.push(self.declaration()?)
         }
 
-        self.consume(
-            &TokenType::Semicolon,
-            ParserError::ExpectedOneOf(self.get_line_no(), vec![TokenType::Semicolon]),
-        )?;
+        Ok(Stmt::Block { declarations })
+    }
+
+    /// statement -> exprStmt
+    ///           |  printStmt
+    ///           |  block   ;
+    pub fn statement(&mut self) -> Result<Stmt, ParserError> {
+        let stmt = if self.matches(vec![TokenType::Print]) {
+            self.print_statement()?
+        } else if self.matches(vec![TokenType::LeftBrace]) {
+            self.block()?
+        } else {
+            self.expression_statement()?
+        };
+
+        self.consume_semicolon()?;
+
         Ok(stmt)
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    /// varDeclaration -> "var" IDENTIFIER ("=" expression)?;
+    fn var_declaration(&mut self) -> Result<Stmt, ParserError> {
+        let literal = self.advance().unwrap().literal.unwrap();
+
+        let name = match literal {
+            LoxLiteral::Identifier(s) => s,
+            _ => {
+                return Err(ParserError::ExpectedOneOf(
+                    self.line_no(),
+                    vec![TokenType::Identifier],
+                ))
+            }
+        };
+
+        let initializer = if self.matches(vec![TokenType::Equal]) {
+            self.expression()?
+        } else {
+            Expr::Literal(LoxLiteral::Nil)
+        };
+
+        self.consume_semicolon()?;
+
+        Ok(Stmt::Var { name, initializer })
+    }
+
+    /// declaration -> varDeclaration
+    ///              | statement      ;
+    fn declaration(&mut self) -> Result<Stmt, ParserError> {
+        if self.matches(vec![TokenType::Var]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        }
+    }
+
+    /// program -> declaration* EOF
+    pub fn program(&mut self) -> Result<Vec<Stmt>, ParserError> {
         let mut statements: Vec<Stmt> = Vec::new();
 
         while !self.is_at_end() {
-            statements.push(self.statement()?)
+            statements.push(self.declaration()?)
         }
 
         Ok(statements)
-    }
-
-    ///Expr  -> equality
-    pub fn expression(&mut self) -> Result<Expr, ParserError> {
-        let expr = self.ternary()?;
-        // println!("Before consume");
-        // self.consume(&TokenType::Semicolon, ParserError::ExpectedOneOf(self.get_line_no(), vec![TokenType::Semicolon]));
-        Ok(expr)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Parser;
-    use crate::{parser_errors::ParserError, scanner::Scanner, token_type::TokenType};
-
-    #[test]
-    fn parses() {
-        // let input = "5 * (4 * 3) / 3 / 7";
-        let input = "true ? 43  34";
-
-        println!("\nInput String: \n================ \n'{}'\n", input);
-
-        let tokens = Scanner::tokens_from_str(input, false);
-
-        let expr = Parser::new(tokens).expression();
-
-        match expr {
-            Ok(expr) => println!("Success: {}", expr),
-            Err(err) => println!("Error: {}", err),
-        }
-
-        println!(
-            "{}",
-            ParserError::ExpectedOneOf(1, vec![TokenType::Colon, TokenType::Dot,])
-        );
-        // println!("\nRAW: \n{:?}\n", expr.clone());
-        // println!("PRETTY_PRINTING: \n{}\n", expr.clone().unwrap());
-    }
+    // use super::Parser;
+    // use crate::{parser_errors::ParserError, scanner::Scanner, token_type::TokenType};
 }

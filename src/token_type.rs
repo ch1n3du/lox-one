@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, sync::mpsc::TryRecvError};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -76,6 +76,11 @@ impl fmt::Display for TokenType {
             QuestionMark => write!(f, "?"),
             Colon => write!(f, ":"),
             Semicolon => write!(f, ";"),
+            Number => write!(f, "NUMBER"),
+            String => write!(f, "STRING"),
+            True => write!(f, "true"),
+            False => write!(f, "false"),
+            Identifier => write!(f, "IDENTIFIER"),
             _ => write!(f, ""),
         }
     }

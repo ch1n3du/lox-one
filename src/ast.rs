@@ -1,7 +1,8 @@
-use std::fmt::{self, Debug};
+use std::fmt::{self, Debug, format};
 
 use crate::lox_literal::LoxLiteral;
 use crate::token::Token;
+use crate::token_type::TokenType;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -21,6 +22,10 @@ pub enum Expr {
         result_1: Box<Expr>,
         result_2: Box<Expr>,
     },
+    Identifier {
+        name: String,
+        line_no: usize,
+    },
 }
 
 impl fmt::Display for Expr {
@@ -37,6 +42,7 @@ impl fmt::Display for Expr {
                 result_1,
                 result_2,
             } => write!(f, "(ternary {} ? {} : {})", condition, result_1, result_2),
+            Identifier { name, line_no } => write!(f, "{}", name),
         }
     }
 }
@@ -45,6 +51,27 @@ impl fmt::Display for Expr {
 pub enum Stmt {
     PrintStmt(Expr),
     ExprStmt(Expr),
+    Var { name: String, initializer: Expr },
+    Block { declarations: Vec<Stmt> }
+}
+
+impl fmt::Display for Stmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Stmt::*;
+        match self {
+            PrintStmt(expr) => write!(f, "print {};", expr),
+            ExprStmt(expr) => write!(f, "{};", expr),
+            Var { name, initializer } => write!(f, "var {} = {}", name, initializer),
+            Block { declarations } => {
+                let repr = declarations.iter()
+                    .fold(String::from("\n{\n"), |acc, stmt| {
+                        format!("{}\t{}\n", acc, stmt)
+                });
+
+                write!(f, "{}}}", repr)
+            }
+        }
+    }
 }
 
 #[cfg(test)]

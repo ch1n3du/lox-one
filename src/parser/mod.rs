@@ -177,10 +177,10 @@ impl Parser {
                     name,
                     line_no: tok.line,
                 }),
-                _ => panic!("This should be impossible {}", literal),
+                _ => panic!("This should be impossible '{}'", literal),
             }
         } else {
-            println!("Invalid Token in primary rule: {:?}", self.peek());
+            println!("Invalid Token in primary rule: '{}'", self.peek().unwrap().token_type);
             Err(ParserError::ExpectedOneOf(
                 self.line_no(),
                 vec![
@@ -328,15 +328,21 @@ impl Parser {
 
     /// exprStatement  -> expression ";";
     fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
-        Ok(Stmt::ExprStmt(self.expression()?))
+        let stmt = Stmt::ExprStmt(self.expression()?);
+        self.consume_semicolon()?;
+
+        Ok(stmt)
     }
 
     /// printStatement -> "print" expression ";";
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
-        Ok(Stmt::PrintStmt(self.expression()?))
+        let stmt = Stmt::PrintStmt(self.expression()?);
+        self.consume_semicolon()?;
+
+        Ok(stmt)
     }
 
-    /// block -> "{" declaration* "}";
+    /// block -> "{" declaration* "}" ;
     fn block(&mut self) -> Result<Stmt, ParserError> {
         let mut declarations: Vec<Stmt> = Vec::new();
 
@@ -358,8 +364,6 @@ impl Parser {
         } else {
             self.expression_statement()?
         };
-
-        self.consume_semicolon()?;
 
         Ok(stmt)
     }
@@ -400,14 +404,22 @@ impl Parser {
     }
 
     /// program -> declaration* EOF
-    pub fn program(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    pub fn program(&mut self) -> (Vec<Stmt>, Vec<ParserError>) {
         let mut statements: Vec<Stmt> = Vec::new();
+        let mut errors: Vec<ParserError> = Vec::new();
 
         while !self.is_at_end() {
-            statements.push(self.declaration()?)
+            match self.declaration() {
+                Ok(stmt) => statements.push(stmt),
+                Err(err) => { 
+                    // On an error synchronise the parser and continue
+                    self.synchronize();
+                    errors.push(err);
+                }
+            }
         }
 
-        Ok(statements)
+        (statements, errors)
     }
 }
 

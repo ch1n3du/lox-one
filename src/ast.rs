@@ -1,4 +1,4 @@
-use std::fmt::{self, Debug, format};
+use std::fmt::{self, format, Debug};
 
 use crate::lox_literal::LoxLiteral;
 use crate::token::Token;
@@ -52,7 +52,7 @@ pub enum Stmt {
     PrintStmt(Expr),
     ExprStmt(Expr),
     Var { name: String, initializer: Expr },
-    Block { declarations: Vec<Stmt> }
+    Block { declarations: Vec<Stmt> },
 }
 
 impl fmt::Display for Stmt {
@@ -63,10 +63,11 @@ impl fmt::Display for Stmt {
             ExprStmt(expr) => write!(f, "{};", expr),
             Var { name, initializer } => write!(f, "var {} = {}", name, initializer),
             Block { declarations } => {
-                let repr = declarations.iter()
+                let repr = declarations
+                    .iter()
                     .fold(String::from("\n{\n"), |acc, stmt| {
                         format!("{}\t{}\n", acc, stmt)
-                });
+                    });
 
                 write!(f, "{}}}", repr)
             }

@@ -1,8 +1,8 @@
 mod enviroment;
 mod runtime_error;
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::ast::{Expr, Stmt};
 use crate::lox_literal::LoxLiteral;
@@ -23,7 +23,9 @@ impl Interpreter {
     }
 
     pub fn with_enclosing(&self) -> Interpreter {
-        Interpreter { enviroment: Enviroment::with_enclosing(&self.enviroment) }
+        Interpreter {
+            enviroment: Enviroment::with_enclosing(&self.enviroment),
+        }
     }
 
     /// Evaluates an expression.
@@ -142,7 +144,7 @@ impl Interpreter {
             Var { name, initializer } => {
                 let initializer = self.evaluate(initializer)?;
                 self.enviroment.borrow_mut().define(name, initializer);
-            },
+            }
             Block { declarations } => {
                 let mut block_interpreter = self.with_enclosing();
                 block_interpreter.interpret(declarations)?
@@ -175,8 +177,23 @@ mod test {
         let tokens = Scanner::tokens_from_str(src, verbose);
 
         let mut parser = Parser::new(tokens);
-        let statements = parser.program()
-            .unwrap_or_else(|err| panic!("Error in 'assert_execution_of':\nSourceCode:\n{}\nError:\n{}", src, err));
+        let (statements, errors ) = parser.program();
+
+        if errors.len() != 0 {
+            let sep = "==========================================================================================";
+
+            println!("\n{}", sep);
+            println!("Errors in 'assert_execution_of':\n{}\n", sep);
+
+            for (i, err) in errors.iter().enumerate() {
+                println!("{} -> Error: {}", i, err);
+            }
+
+            // println!("\nFinished reporting errors.");
+            println!("\n{}\n", sep);
+
+            panic!()
+        }
 
         let mut interpreter = Interpreter::new();
         interpreter.interpret(&statements).unwrap();
@@ -203,7 +220,7 @@ mod test {
     #[test]
     fn executes_print_statements() {
         assert_execution_of_file("examples/print_stmt.lox", false);
-   }
+    }
 
     #[test]
     fn executes_variables() {
@@ -212,6 +229,11 @@ mod test {
 
     #[test]
     fn executes_block_statements() {
-        assert_execution_of_file("examples/block_stmt.lox", false);
-   }
+        assert_execution_of_file("examples/block_stmt.lox", true);
+    }
+
+    #[test]
+    fn throws_errrors() {
+        assert_execution_of_file("examples/errors.lox", false);
+    }
 }

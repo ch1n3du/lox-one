@@ -1,9 +1,10 @@
 {
     var x = "Hello";
     print x;
-};
+}
 
 {
     var x = "World";
     print x;
-};
+    print 5;
+}

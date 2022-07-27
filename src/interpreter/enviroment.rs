@@ -12,7 +12,6 @@ pub struct Enviroment {
 
 impl Enviroment {
     pub fn new() -> Enviroment {
-
         Enviroment {
             enclosing: None,
             values: HashMap::new(),
@@ -22,7 +21,7 @@ impl Enviroment {
     pub fn with_enclosing(enclosing: &Rc<RefCell<Enviroment>>) -> Rc<RefCell<Enviroment>> {
         let env = Enviroment {
             enclosing: Some(Rc::clone(enclosing)),
-            values: HashMap::new()
+            values: HashMap::new(),
         };
 
         Rc::new(RefCell::new(env))
@@ -33,8 +32,8 @@ impl Enviroment {
     }
 
     pub fn get(&self, name: &String) -> Option<LoxLiteral> {
-        let val =  self.values.get(name);
-        
+        let val = self.values.get(name);
+
         match (val, &self.enclosing) {
             (Some(res), _) => Some(res.clone()),
             (_, Some(env)) => env.borrow().get(name).clone(),

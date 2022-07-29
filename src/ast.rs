@@ -1,8 +1,7 @@
-use std::fmt::{self, format, Debug};
+use std::fmt::{self, Debug};
 
 use crate::lox_literal::LoxLiteral;
 use crate::token::Token;
-use crate::token_type::TokenType;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -42,7 +41,7 @@ impl fmt::Display for Expr {
                 result_1,
                 result_2,
             } => write!(f, "(ternary {} ? {} : {})", condition, result_1, result_2),
-            Identifier { name, line_no } => write!(f, "{}", name),
+            Identifier { name, line_no:_ } => write!(f, "{}", name),
         }
     }
 }
@@ -51,8 +50,18 @@ impl fmt::Display for Expr {
 pub enum Stmt {
     PrintStmt(Expr),
     ExprStmt(Expr),
-    Var { name: String, initializer: Expr },
-    Block { declarations: Vec<Stmt> },
+    Var {
+        name: String,
+        initializer: Expr,
+    },
+    Block {
+        declarations: Vec<Stmt>,
+    },
+    IfStmt {
+        condition: Expr,
+        true_stmt: Box<Stmt>,
+        false_stmt: Option<Box<Stmt>>,
+    },
 }
 
 impl fmt::Display for Stmt {
@@ -63,14 +72,20 @@ impl fmt::Display for Stmt {
             ExprStmt(expr) => write!(f, "{};", expr),
             Var { name, initializer } => write!(f, "var {} = {}", name, initializer),
             Block { declarations } => {
-                let repr = declarations
-                    .iter()
-                    .fold(String::from("\n{\n"), |acc, stmt| {
-                        format!("{}\t{}\n", acc, stmt)
-                    });
+                let repr = declarations.iter().fold(String::from("{\n"), |acc, stmt| {
+                    format!("{}    {}\n", acc, stmt)
+                });
 
                 write!(f, "{}}}", repr)
             }
+            IfStmt {
+                condition,
+                true_stmt,
+                false_stmt,
+            } => match false_stmt {
+                None => write!(f, "if ({}) {}", condition, true_stmt,),
+                Some(stmt) => write!(f, "if ({}) {} else {}", condition, true_stmt, stmt),
+            },
         }
     }
 }

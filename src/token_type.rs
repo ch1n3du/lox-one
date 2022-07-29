@@ -1,4 +1,4 @@
-use std::{fmt, sync::mpsc::TryRecvError};
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {

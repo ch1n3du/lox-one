@@ -97,16 +97,20 @@ impl Parser {
         match (self.check(&token_type), self.advance()) {
             (true, Some(token)) => Ok(token),
             (true, None) => Err(ParserError::Eof(self.line_no())),
-            _ => Err(ParserError::ExpectedOneOf {
-                line_no: self.line_no(),
-                token_types: vec![token_type],
-            }),
+            _ =>{ 
+                println!("Wrong Token: {:?}", self.previous().unwrap());
+                Err(ParserError::ExpectedOneOf {
+                    line_no: self.line_no(),
+                    token_types: vec![token_type],
+                })
+            },
         }
     }
 
     /// Synchronizes on error.
     /// While current is not at end
     fn synchronize(&mut self) {
+        println!("Calles");
         self.advance();
 
         while !self.is_at_end() {
@@ -163,7 +167,12 @@ impl Parser {
                     name,
                     line_no: tok.line,
                 }),
-                _ => panic!("This should be impossible '{}'", literal),
+                _ => {
+                    return Err(ParserError::ExpectedOneOf {
+                        line_no: self.line_no(),
+                        token_types: vec![TokenType::Identifier],
+                    })
+                }
             }
         } else {
             println!(
@@ -309,9 +318,39 @@ impl Parser {
         Ok(expr)
     }
 
-    /// expression -> ternary
+    /// logical_and -> ternary ("and" ternary)* ;
+    fn logical_and(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.ternary()?;
+
+        while self.matches(vec![TokenType::And]) {
+            expr = Expr::Binary { 
+                lhs: Box::new(expr), 
+                op: self.previous().unwrap(), 
+                rhs: Box::new(self.ternary()?),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    /// logical_or -> logic_and ("and" logic_and)* ;
+    fn logical_or(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.logical_and()?;
+
+        while self.matches(vec![TokenType::Or]) {
+            expr = Expr::Binary { 
+                lhs: Box::new(expr), 
+                op: self.previous().unwrap(), 
+                rhs: Box::new(self.logical_and()?) 
+            };
+        }
+
+        Ok(expr)
+    }
+
+    /// expression -> logical_or;
     fn expression(&mut self) -> Result<Expr, ParserError> {
-        let expr = self.ternary()?;
+        let expr = self.logical_or()?;
         Ok(expr)
     }
 
@@ -342,14 +381,37 @@ impl Parser {
         Ok(Stmt::Block { declarations })
     }
 
+    fn if_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.consume(TokenType::LeftParen)?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen)?;
+
+        let true_stmt = Box::new(self.statement()?);
+
+        let false_stmt = if self.matches(vec![TokenType::Else]) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+
+        Ok(Stmt::IfStmt {
+            condition,
+            true_stmt,
+            false_stmt,
+        })
+    }
+
     /// statement -> exprStmt
     ///           |  printStmt
-    ///           |  block   ;
+    ///           |  block   
+    ///           |  ifStmt ;
     pub fn statement(&mut self) -> Result<Stmt, ParserError> {
         let stmt = if self.matches(vec![TokenType::Print]) {
             self.print_statement()?
         } else if self.matches(vec![TokenType::LeftBrace]) {
             self.block()?
+        } else if self.matches(vec![TokenType::If]) {
+            self.if_statement()?
         } else {
             self.expression_statement()?
         };
@@ -416,4 +478,73 @@ impl Parser {
 mod tests {
     // use super::Parser;
     // use crate::{parser_errors::ParserError, scanner::Scanner, token_type::TokenType};
+    use super::*;
+
+    use crate::parser::Parser;
+    use crate::scanner::Scanner;
+
+    use crate::utils::{log_items, read_file};
+
+    fn assert_can_parse(title: &str, src: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
+        let tokens = Scanner::tokens_from_str(src, verbose);
+
+        let mut parser = Parser::new(tokens);
+        let (statements, errors) = parser.program();
+        
+        if errors.len() != 0 {
+            log_items(title, &errors)
+        }
+
+        (statements, errors)
+    }
+
+    fn assert_can_parse_file(path: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
+        let src = read_file(path);
+
+        assert_can_parse(
+            format!("Errors parsing '{}' file", path).as_str(),
+            src.as_str(),
+            verbose,
+        )
+    }
+
+    #[test]
+    fn can_parse_expr_statements() {
+        assert_can_parse_file("examples/expr_stmt.lox", false);
+    }
+
+    #[test]
+    fn can_parse_print_statements() {
+        assert_can_parse_file("examples/print_stmt.lox", false);
+    }
+
+    #[test]
+    fn can_parse_variable_declarations() {
+        assert_can_parse_file("examples/variables.lox", false);
+    }
+
+    #[test]
+    fn can_parse_block_statements() {
+        assert_can_parse_file("examples/variables.lox", false);
+    }
+
+    #[test]
+    fn can_parse_if_statements() {
+        assert_can_parse_file("examples/if_stmt.lox", false);
+    }
+
+    #[test]
+    fn can_parse_if_else_statements() {
+        assert_can_parse_file("examples/if_else_stmt.lox", false);
+    }
+
+    #[test]
+    fn can_parse_logical_and() {
+        assert_can_parse_file("examples/logic_and.lox", false);
+    }
+
+    #[test]
+    fn can_parse_logical_or() {
+        assert_can_parse_file("examples/logic_or.lox", false);
+    }
 }

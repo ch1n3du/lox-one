@@ -89,6 +89,14 @@ impl Interpreter {
                     }
 
                     // Logical Operators
+                    (And, left, right) => {
+                        Ok(LoxLiteral::Boolean(left.is_truthy() && right.is_truthy()))
+                    }
+                    (Or, left, right) => {
+                        Ok(LoxLiteral::Boolean(left.is_truthy() || right.is_truthy()))
+                    }
+
+                    // Comparison Operators
                     (EqualEqual, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
                         Ok(LoxLiteral::Boolean(l == r))
                     }
@@ -149,6 +157,17 @@ impl Interpreter {
                 let mut block_interpreter = self.with_enclosing();
                 block_interpreter.interpret(declarations)?
             }
+            IfStmt {
+                condition,
+                true_stmt,
+                false_stmt,
+            } => {
+                if self.evaluate(condition)?.is_truthy() {
+                    self.execute(&true_stmt)?
+                } else if let Some(stmt) = false_stmt {
+                    self.execute(&stmt)?
+                }
+            }
         }
 
         Ok(())
@@ -170,29 +189,16 @@ mod test {
     use crate::parser::Parser;
     use crate::scanner::Scanner;
 
-    use std::fs::File;
-    use std::io::Read;
+    use crate::utils::{log_items, read_file};
 
-    fn assert_execution_of(src: &str, verbose: bool) -> Interpreter {
+    fn assert_execution_of(title: &str, src: &str, verbose: bool) -> Interpreter {
         let tokens = Scanner::tokens_from_str(src, verbose);
 
         let mut parser = Parser::new(tokens);
         let (statements, errors) = parser.program();
 
         if errors.len() != 0 {
-            let sep = "==========================================================================================";
-
-            println!("\n{}", sep);
-            println!("Errors in 'assert_execution_of':\n{}\n", sep);
-
-            for (i, err) in errors.iter().enumerate() {
-                println!("{} -> Error: {}", i, err);
-            }
-
-            // println!("\nFinished reporting errors.");
-            println!("\n{}\n", sep);
-
-            panic!()
+            log_items(title, &errors)
         }
 
         let mut interpreter = Interpreter::new();
@@ -201,39 +207,80 @@ mod test {
         interpreter
     }
 
-    fn assert_execution_of_file(path: &str, verbose: bool) -> Interpreter {
-        let mut file = File::open(path)
-            .unwrap_or_else(|_| panic!("Error opening file in 'assert_execution_of_file'"));
-
-        let mut src = String::new();
-        file.read_to_string(&mut src)
-            .unwrap_or_else(|_| panic!("Error reading file in 'assert_execution_of_file'"));
-
-        assert_execution_of(src.as_str(), verbose)
+    fn assert_execution_of_file(title: &str, path: &str, verbose: bool) -> Interpreter {
+        let src = read_file(path);
+        assert_execution_of(title, src.as_str(), verbose)
     }
 
     #[test]
     fn executes_expr_statements() {
-        assert_execution_of_file("examples/expr_stmt.lox", false);
+        assert_execution_of_file(
+            "Errors executing Expression statements",
+            "examples/expr_stmt.lox",
+            false,
+        );
     }
 
     #[test]
     fn executes_print_statements() {
-        assert_execution_of_file("examples/print_stmt.lox", false);
+        assert_execution_of_file(
+            "Errors executing Print statements",
+            "examples/print_stmt.lox",
+            false,
+        );
     }
 
     #[test]
     fn executes_variables() {
-        assert_execution_of_file("examples/variables.lox", false);
+        assert_execution_of_file(
+            "Errors executing Variable declarations",
+            "examples/variables.lox",
+            false,
+        );
     }
 
     #[test]
     fn executes_block_statements() {
-        assert_execution_of_file("examples/block_stmt.lox", true);
+        assert_execution_of_file(
+            "Errors executing Block statements",
+            "examples/block_stmt.lox",
+            false,
+        );
     }
 
     #[test]
-    fn throws_errrors() {
-        assert_execution_of_file("examples/errors.lox", false);
+    fn executes_if_statements() {
+        assert_execution_of_file(
+            "Errors executing If statements",
+            "examples/if_stmt.lox",
+            false,
+        );
+    }
+
+    #[test]
+    fn executes_if_else_statements() {
+        assert_execution_of_file(
+            "Errors executing If/Else statements",
+            "examples/if_else_stmt.lox",
+            false,
+        );
+    }
+
+    #[test]
+    fn executes_logical_or() {
+        assert_execution_of_file(
+            "Errors executing Logical Or",
+            "examples/logic_or.lox",
+            false,
+        );
+    }
+
+    #[test]
+    fn executes_logical_and() {
+        assert_execution_of_file(
+            "Errors executing Logical And",
+            "examples/logic_and.lox",
+            false,
+        );
     }
 }

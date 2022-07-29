@@ -7,7 +7,10 @@ use crate::token_type::TokenType;
 pub enum ParserError {
     Eof(usize),
     ExpectedClosingBrace(usize),
-    UnexpectedToken(usize, Token),
+    UnexpectedToken {
+        line_no: usize,
+        token: Token,
+    },
     ExpectedOneOf {
         line_no: usize,
         token_types: Vec<TokenType>,
@@ -23,7 +26,7 @@ impl fmt::Display for ParserError {
             ExpectedClosingBrace(line_no) => {
                 write!(f, "Expected closing brace, on line {}.", line_no)
             }
-            UnexpectedToken(line_no, token) => write!(
+            UnexpectedToken { line_no, token } => write!(
                 f,
                 "Unexpected token '{}', on line {}",
                 token.token_type, line_no

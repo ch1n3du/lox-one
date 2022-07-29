@@ -1,0 +1,8 @@
+print true or false;
+
+if (true or false) {
+    print "Logical OR works!";
+} else {
+    print "Shouldn't work";
+    print "Logical OR failed.";
+}

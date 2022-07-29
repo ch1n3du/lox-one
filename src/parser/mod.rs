@@ -93,26 +93,15 @@ impl Parser {
     }
 
     /// Consumes a token if it matches token_type else returns.
-    fn consume(
-        &mut self,
-        token_type: &TokenType,
-        error: ParserError,
-    ) -> Result<Token, ParserError> {
-        match (self.check(token_type), self.advance()) {
+    fn consume(&mut self, token_type: TokenType) -> Result<Token, ParserError> {
+        match (self.check(&token_type), self.advance()) {
             (true, Some(token)) => Ok(token),
             (true, None) => Err(ParserError::Eof(self.line_no())),
-            _ => Err(error),
+            _ => Err(ParserError::ExpectedOneOf {
+                line_no: self.line_no(),
+                token_types: vec![token_type],
+            }),
         }
-    }
-
-    /// Consumes a semicolon
-    fn consume_semicolon(&mut self) -> Result<(), ParserError> {
-        self.consume(
-            &TokenType::Semicolon,
-            ParserError::ExpectedOneOf(self.line_no(), vec![TokenType::Semicolon]),
-        )?;
-
-        Ok(())
     }
 
     /// Synchronizes on error.
@@ -162,10 +151,7 @@ impl Parser {
 
         if self.matches(vec![TokenType::LeftParen]) {
             let expr = self.expression()?;
-            self.consume(
-                &TokenType::RightParen,
-                ParserError::ExpectedClosingBrace(self.line_no()),
-            )?;
+            self.consume(TokenType::RightParen)?;
 
             return Ok(Expr::Grouping(Box::new(expr)));
         } else if self.matches(vec![TokenType::Identifier]) {
@@ -180,17 +166,20 @@ impl Parser {
                 _ => panic!("This should be impossible '{}'", literal),
             }
         } else {
-            println!("Invalid Token in primary rule: '{}'", self.peek().unwrap().token_type);
-            Err(ParserError::ExpectedOneOf(
-                self.line_no(),
-                vec![
+            println!(
+                "Invalid Token in primary rule: '{}'",
+                self.peek().unwrap().token_type
+            );
+            Err(ParserError::ExpectedOneOf {
+                line_no: self.line_no(),
+                token_types: vec![
                     TokenType::Number,
                     TokenType::String,
                     TokenType::False,
                     TokenType::True,
                     TokenType::False,
                 ],
-            ))
+            })
         }
 
         // panic!("\nOh no! \n\tCurrent: {:?}\n\tNext: {:?}", self.previous(), self.peek())
@@ -310,10 +299,10 @@ impl Parser {
 
                 return Ok(expr);
             } else {
-                return Err(ParserError::ExpectedOneOf(
-                    self.line_no(),
-                    vec![TokenType::Colon],
-                ));
+                return Err(ParserError::ExpectedOneOf {
+                    line_no: self.line_no(),
+                    token_types: vec![TokenType::Colon],
+                });
             }
         }
 
@@ -329,7 +318,7 @@ impl Parser {
     /// exprStatement  -> expression ";";
     fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
         let stmt = Stmt::ExprStmt(self.expression()?);
-        self.consume_semicolon()?;
+        self.consume(TokenType::Semicolon)?;
 
         Ok(stmt)
     }
@@ -337,7 +326,7 @@ impl Parser {
     /// printStatement -> "print" expression ";";
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
         let stmt = Stmt::PrintStmt(self.expression()?);
-        self.consume_semicolon()?;
+        self.consume(TokenType::Semicolon)?;
 
         Ok(stmt)
     }
@@ -375,10 +364,10 @@ impl Parser {
         let name = match literal {
             LoxLiteral::Identifier(s) => s,
             _ => {
-                return Err(ParserError::ExpectedOneOf(
-                    self.line_no(),
-                    vec![TokenType::Identifier],
-                ))
+                return Err(ParserError::ExpectedOneOf {
+                    line_no: self.line_no(),
+                    token_types: vec![TokenType::Identifier],
+                })
             }
         };
 
@@ -388,7 +377,7 @@ impl Parser {
             Expr::Literal(LoxLiteral::Nil)
         };
 
-        self.consume_semicolon()?;
+        self.consume(TokenType::Semicolon)?;
 
         Ok(Stmt::Var { name, initializer })
     }
@@ -411,7 +400,7 @@ impl Parser {
         while !self.is_at_end() {
             match self.declaration() {
                 Ok(stmt) => statements.push(stmt),
-                Err(err) => { 
+                Err(err) => {
                     // On an error synchronise the parser and continue
                     self.synchronize();
                     errors.push(err);

@@ -177,7 +177,7 @@ mod test {
         let tokens = Scanner::tokens_from_str(src, verbose);
 
         let mut parser = Parser::new(tokens);
-        let (statements, errors ) = parser.program();
+        let (statements, errors) = parser.program();
 
         if errors.len() != 0 {
             let sep = "==========================================================================================";

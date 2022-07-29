@@ -8,7 +8,10 @@ pub enum ParserError {
     Eof(usize),
     ExpectedClosingBrace(usize),
     UnexpectedToken(usize, Token),
-    ExpectedOneOf(usize, Vec<TokenType>),
+    ExpectedOneOf {
+        line_no: usize,
+        token_types: Vec<TokenType>,
+    },
 }
 
 impl fmt::Display for ParserError {
@@ -25,7 +28,10 @@ impl fmt::Display for ParserError {
                 "Unexpected token '{}', on line {}",
                 token.token_type, line_no
             ),
-            ExpectedOneOf(line_no, token_types) => match token_types.len() {
+            ExpectedOneOf {
+                line_no,
+                token_types,
+            } => match token_types.len() {
                 1 => write!(f, "Expected '{}', on line {}", token_types[0], line_no),
                 _ => {
                     let prefix = token_types[1..token_types.len() - 1]

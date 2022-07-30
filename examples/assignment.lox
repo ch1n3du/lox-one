@@ -1,0 +1,7 @@
+var x = 42;
+
+print x;
+
+x = 69;
+
+print x;

@@ -25,6 +25,11 @@ pub enum Expr {
         name: String,
         line_no: usize,
     },
+    Assignment {
+        name: String,
+        value: Box<Expr>,
+        line_no: usize,
+    },
 }
 
 impl fmt::Display for Expr {
@@ -41,7 +46,12 @@ impl fmt::Display for Expr {
                 result_1,
                 result_2,
             } => write!(f, "(ternary {} ? {} : {})", condition, result_1, result_2),
-            Identifier { name, line_no:_ } => write!(f, "{}", name),
+            Identifier { name, line_no: _ } => write!(f, "{}", name),
+            Assignment {
+                name,
+                value,
+                line_no: _,
+            } => write!(f, "{} = {}", name, value),
         }
     }
 }
@@ -61,6 +71,10 @@ pub enum Stmt {
         condition: Expr,
         true_stmt: Box<Stmt>,
         false_stmt: Option<Box<Stmt>>,
+    },
+    WhileStmt {
+        condition: Expr,
+        body: Box<Stmt>,
     },
 }
 
@@ -86,6 +100,7 @@ impl fmt::Display for Stmt {
                 None => write!(f, "if ({}) {}", condition, true_stmt,),
                 Some(stmt) => write!(f, "if ({}) {} else {}", condition, true_stmt, stmt),
             },
+            WhileStmt { condition, body } => write!(f, "while ({}) {}", condition, body),
         }
     }
 }

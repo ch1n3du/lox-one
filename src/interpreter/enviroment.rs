@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use crate::lox_literal::LoxLiteral;
 
+#[derive(Debug)]
 pub struct Enviroment {
     pub enclosing: Option<Rc<RefCell<Enviroment>>>,
     values: HashMap<String, LoxLiteral>,

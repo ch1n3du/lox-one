@@ -1,6 +1,6 @@
 /*
 "Grammar, which knows how to control even kings."
-                                    - Moliere
+           &                         - Moliere
 */
 
 mod parser_error;
@@ -97,20 +97,20 @@ impl Parser {
         match (self.check(&token_type), self.advance()) {
             (true, Some(token)) => Ok(token),
             (true, None) => Err(ParserError::Eof(self.line_no())),
-            _ =>{ 
+            _ => {
                 println!("Wrong Token: {:?}", self.previous().unwrap());
                 Err(ParserError::ExpectedOneOf {
                     line_no: self.line_no(),
                     token_types: vec![token_type],
                 })
-            },
+            }
         }
     }
 
     /// Synchronizes on error.
     /// While current is not at end
     fn synchronize(&mut self) {
-        println!("Calles");
+        println!("Called synchronize");
         self.advance();
 
         while !self.is_at_end() {
@@ -323,9 +323,9 @@ impl Parser {
         let mut expr = self.ternary()?;
 
         while self.matches(vec![TokenType::And]) {
-            expr = Expr::Binary { 
-                lhs: Box::new(expr), 
-                op: self.previous().unwrap(), 
+            expr = Expr::Binary {
+                lhs: Box::new(expr),
+                op: self.previous().unwrap(),
                 rhs: Box::new(self.ternary()?),
             };
         }
@@ -338,19 +338,43 @@ impl Parser {
         let mut expr = self.logical_and()?;
 
         while self.matches(vec![TokenType::Or]) {
-            expr = Expr::Binary { 
-                lhs: Box::new(expr), 
-                op: self.previous().unwrap(), 
-                rhs: Box::new(self.logical_and()?) 
+            expr = Expr::Binary {
+                lhs: Box::new(expr),
+                op: self.previous().unwrap(),
+                rhs: Box::new(self.logical_and()?),
             };
         }
 
         Ok(expr)
     }
 
-    /// expression -> logical_or;
-    fn expression(&mut self) -> Result<Expr, ParserError> {
+    /// assignment -> IDENTIFIER "=" assignment
+    ///             | logical_or ;
+    fn assignment(&mut self) -> Result<Expr, ParserError> {
         let expr = self.logical_or()?;
+
+        match &expr {
+            Expr::Identifier { name, line_no :_ } => {
+                if self.matches(vec![TokenType::Equal]) {
+                    let value = Box::new(self.assignment()?);
+
+                    Ok(Expr::Assignment {
+                        name: name.clone(),
+                        value,
+                        line_no: self.line_no(),
+                    })
+                } else {
+                    Ok(expr)
+                }
+            }
+            _ => Ok(expr),
+        }
+    }
+
+    /// expression -> logical_or
+    ///            |  assignment ;
+    fn expression(&mut self) -> Result<Expr, ParserError> {
+        let expr = self.assignment()?;
         Ok(expr)
     }
 
@@ -401,10 +425,22 @@ impl Parser {
         })
     }
 
+    /// whileStmt -> "while" "(" expression ")" statement;
+    fn while_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.consume(TokenType::LeftParen)?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen)?;
+
+        let body = Box::new(self.statement()?);
+
+        Ok(Stmt::WhileStmt { condition, body })
+    }
+
     /// statement -> exprStmt
     ///           |  printStmt
     ///           |  block   
-    ///           |  ifStmt ;
+    ///           |  ifStmt
+    ///           |  whileStmt ;
     pub fn statement(&mut self) -> Result<Stmt, ParserError> {
         let stmt = if self.matches(vec![TokenType::Print]) {
             self.print_statement()?
@@ -412,6 +448,8 @@ impl Parser {
             self.block()?
         } else if self.matches(vec![TokenType::If]) {
             self.if_statement()?
+        } else if self.matches(vec![TokenType::While]) {
+            self.while_statement()?
         } else {
             self.expression_statement()?
         };
@@ -490,7 +528,7 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let (statements, errors) = parser.program();
-        
+
         if errors.len() != 0 {
             log_items(title, &errors)
         }
@@ -524,6 +562,11 @@ mod tests {
     }
 
     #[test]
+    fn can_parse_assignment_expressions() {
+        assert_can_parse_file("examples/assignment.lox", false);
+    }
+
+    #[test]
     fn can_parse_block_statements() {
         assert_can_parse_file("examples/variables.lox", false);
     }
@@ -546,5 +589,10 @@ mod tests {
     #[test]
     fn can_parse_logical_or() {
         assert_can_parse_file("examples/logic_or.lox", false);
+    }
+
+    #[test]
+    fn can_parse_while_statements() {
+        assert_can_parse_file("examples/while_stmt.lox", false);
     }
 }

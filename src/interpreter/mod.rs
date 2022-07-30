@@ -49,6 +49,25 @@ impl Interpreter {
                     })
                 }
             }
+            Assignment {
+                name,
+                value,
+                line_no,
+            } => {
+                let previous = self.enviroment.borrow().get(&name);
+
+                if previous.is_none() {
+                    Err(RuntimeError::VarDoesNotExist {
+                        name: name.clone(),
+                        line_no: line_no.clone(),
+                    })
+                } else {
+                    let value = self.evaluate(value)?;
+                    self.enviroment.borrow_mut().define(name, value);
+
+                    Ok(LoxLiteral::Nil)
+                }
+            }
             Unary { op, rhs } => match (&op.token_type, self.evaluate(rhs)?) {
                 (Minus, LoxLiteral::Number(n)) => Ok(LoxLiteral::Number(-n)),
                 (Minus, _) => Err(RuntimeError::Generic(
@@ -168,6 +187,21 @@ impl Interpreter {
                     self.execute(&stmt)?
                 }
             }
+            WhileStmt { condition, body } => {
+                let mut x = 1;
+
+                while self.evaluate(condition)?.is_truthy() {
+                    self.execute(body)?;
+
+                    println!("Iteration: {}", x);
+                    println!("While body: {}", body);
+                    println!("\nCurrent Enviroment: {:?}\n", self.enviroment);
+                    x = x + 1;
+                    if x == 3 {
+                        panic!("Ran while thrice: ")
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -240,6 +274,15 @@ mod test {
     }
 
     #[test]
+    fn executes_assignment_expressions() {
+        assert_execution_of_file(
+            "Errors executing Variable declarations",
+            "examples/assignment.lox",
+            false,
+        );
+    }
+
+    #[test]
     fn executes_block_statements() {
         assert_execution_of_file(
             "Errors executing Block statements",
@@ -280,6 +323,15 @@ mod test {
         assert_execution_of_file(
             "Errors executing Logical And",
             "examples/logic_and.lox",
+            false,
+        );
+    }
+
+    #[test]
+    fn executes_while_statements() {
+        assert_execution_of_file(
+            "Errors executing While statements",
+            "examples/while_stmt.lox",
             false,
         );
     }

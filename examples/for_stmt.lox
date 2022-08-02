@@ -1,0 +1,14 @@
+print "From first 'for' loop";
+
+for (var x = 0; x < 5; x = x + 1) {
+    print x;
+}
+
+print "From second 'for' loop";
+
+var y = 0;
+
+for (; y < 6 ;) {
+    print y;
+    y = y + 1;
+}

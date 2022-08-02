@@ -11,12 +11,14 @@ use self::runtime_error::RuntimeError;
 #[derive(Debug)]
 pub struct Interpreter {
     environment: Box<Environment>,
+    flag: bool
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
-            environment: Box::new(Environment::new())
+            environment: Box::new(Environment::new()),
+            flag: false
         }
     }
 
@@ -316,6 +318,15 @@ mod test {
         assert_execution_of_file(
             "Errors executing While statements",
             "examples/while_stmt.lox",
+            false,
+        );
+    }
+
+    #[test]
+    fn executes_for_statements() {
+        assert_execution_of_file(
+            "Errors executing While statements",
+            "examples/for_stmt.lox",
             false,
         );
     }

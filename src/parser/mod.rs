@@ -98,7 +98,7 @@ impl Parser {
             (true, Some(token)) => Ok(token),
             (true, None) => Err(ParserError::Eof(self.line_no())),
             _ => {
-                println!("Wrong Token: {:?}", self.previous().unwrap());
+                println!("Wrong Token Consumeed: {:?}", self.previous().unwrap());
                 Err(ParserError::ExpectedOneOf {
                     line_no: self.line_no(),
                     token_types: vec![token_type],
@@ -176,8 +176,8 @@ impl Parser {
             }
         } else {
             println!(
-                "Invalid Token in primary rule: '{}'",
-                self.peek().unwrap().token_type
+                "Invalid Token in primary rule: '{:?}'",
+                self.peek().unwrap()
             );
             Err(ParserError::ExpectedOneOf {
                 line_no: self.line_no(),
@@ -436,11 +436,72 @@ impl Parser {
         Ok(Stmt::WhileStmt { condition, body })
     }
 
+    /// forStmt -> "for" "(" ( varDecl | exprStmt | ";")
+    ///            expression? ";"
+    ///            expression? ")" statement;
+    fn for_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.consume(TokenType::LeftParen)?;
+
+        /// ( varDecl | exprStmt | ";") ;
+        let initializer: Option<Stmt>;
+        if self.matches(vec![TokenType::Semicolon]) {
+            initializer = None;
+        } else if self.matches(vec![TokenType::Var]) {
+            initializer = Some(self.var_declaration()?);
+        } else {
+            initializer = Some(self.expression_statement()?);
+        }
+
+        /// expression? ";" ;
+        let condition: Option<Expr>;
+        if self.matches(vec![TokenType::Semicolon]) {
+            condition = None;
+        } else {
+            condition = Some(self.expression()?);
+            self.consume(TokenType::Semicolon)?;
+        }
+
+        /// expression? ")" ;
+        let increment: Option<Expr>;
+        if self.matches(vec![TokenType::RightParen]) {
+            increment = None;
+        } else {
+            increment = Some(self.expression()?);
+            self.consume(TokenType::RightParen)?;
+        }
+
+        let mut block_declarations: Vec<Stmt> = Vec::new();
+
+        if let Some(stmt) = initializer {
+            block_declarations.push(stmt)
+        }
+
+        // Parse for loop
+        let condition = if condition.is_none() {
+            Expr::Literal(LoxLiteral::Boolean(true))
+        } else {
+            condition.unwrap()
+        };
+
+        let while_body: Stmt = if let Some(increment) = increment { 
+            Stmt::Block { declarations: vec![self.statement()?, Stmt::ExprStmt(increment)] }
+        } else {
+            Stmt::Block { declarations: vec![self.statement()?] }
+        };
+
+        let while_stmt = Stmt::WhileStmt { condition, body: Box::new(while_body) };
+
+        block_declarations.push(while_stmt);
+
+        Ok(Stmt::Block { declarations: block_declarations })
+    }
+
     /// statement -> exprStmt
     ///           |  printStmt
     ///           |  block   
     ///           |  ifStmt
-    ///           |  whileStmt ;
+    ///           |  whileStmt
+    ///           |  forStmt   ;
     pub fn statement(&mut self) -> Result<Stmt, ParserError> {
         let stmt = if self.matches(vec![TokenType::Print]) {
             self.print_statement()?
@@ -450,6 +511,8 @@ impl Parser {
             self.if_statement()?
         } else if self.matches(vec![TokenType::While]) {
             self.while_statement()?
+        } else if self.matches(vec![TokenType::For]) {
+            self.for_statement()?
         } else {
             self.expression_statement()?
         };
@@ -594,5 +657,10 @@ mod tests {
     #[test]
     fn can_parse_while_statements() {
         assert_can_parse_file("examples/while_stmt.lox", false);
+    }
+
+    #[test]
+    fn can_parse_for_statements() {
+        assert_can_parse_file("examples/for_stmt.lox", false);
     }
 }

@@ -1,7 +1,8 @@
 var x = 42;
 
 print x;
-
-x = 69;
+{
+    x = 69;
+}
 
 print x;

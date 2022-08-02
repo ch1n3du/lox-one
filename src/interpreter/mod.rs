@@ -1,35 +1,27 @@
-mod enviroment;
+mod environment;
 mod runtime_error;
-
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use crate::ast::{Expr, Stmt};
 use crate::lox_literal::LoxLiteral;
 use crate::token_type::TokenType;
 
-use self::enviroment::Enviroment;
+use self::environment::Environment;
 use self::runtime_error::RuntimeError;
 
+#[derive(Debug)]
 pub struct Interpreter {
-    enviroment: Rc<RefCell<Enviroment>>,
+    environment: Box<Environment>,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
-            enviroment: Rc::new(RefCell::new(Enviroment::new())),
-        }
-    }
-
-    pub fn with_enclosing(&self) -> Interpreter {
-        Interpreter {
-            enviroment: Enviroment::with_enclosing(&self.enviroment),
+            environment: Box::new(Environment::new())
         }
     }
 
     /// Evaluates an expression.
-    pub fn evaluate(&self, expr: &Expr) -> Result<LoxLiteral, RuntimeError> {
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<LoxLiteral, RuntimeError> {
         use Expr::*;
         use LoxLiteral::*;
         use TokenType::*;
@@ -38,7 +30,7 @@ impl Interpreter {
             Literal(value) => Ok(value.to_owned()),
             Grouping(inner_expr) => self.evaluate(inner_expr),
             Expr::Identifier { name, line_no } => {
-                let value = self.enviroment.borrow_mut().get(&name);
+                let value = self.environment.get(&name);
 
                 if value.is_some() {
                     Ok(value.unwrap().to_owned())
@@ -54,7 +46,7 @@ impl Interpreter {
                 value,
                 line_no,
             } => {
-                let previous = self.enviroment.borrow().get(&name);
+                let previous = self.environment.get(&name);
 
                 if previous.is_none() {
                     Err(RuntimeError::VarDoesNotExist {
@@ -63,7 +55,7 @@ impl Interpreter {
                     })
                 } else {
                     let value = self.evaluate(value)?;
-                    self.enviroment.borrow_mut().define(name, value);
+                    self.environment.assign(name, value);
 
                     Ok(LoxLiteral::Nil)
                 }
@@ -170,11 +162,13 @@ impl Interpreter {
             PrintStmt(expr) => println!("{}", self.evaluate(expr)?),
             Var { name, initializer } => {
                 let initializer = self.evaluate(initializer)?;
-                self.enviroment.borrow_mut().define(name, initializer);
+                self.environment.define(name, initializer);
             }
             Block { declarations } => {
-                let mut block_interpreter = self.with_enclosing();
-                block_interpreter.interpret(declarations)?
+                // TODO This is some of the hackiest stuff I've ever written
+                self.environment = Box::new(Environment::with_enclosing(self.environment.clone()));
+                self.interpret(declarations)?;
+                self.environment = self.environment.enclosing.clone().unwrap();
             }
             IfStmt {
                 condition,
@@ -188,18 +182,8 @@ impl Interpreter {
                 }
             }
             WhileStmt { condition, body } => {
-                let mut x = 1;
-
                 while self.evaluate(condition)?.is_truthy() {
                     self.execute(body)?;
-
-                    println!("Iteration: {}", x);
-                    println!("While body: {}", body);
-                    println!("\nCurrent Enviroment: {:?}\n", self.enviroment);
-                    x = x + 1;
-                    if x == 3 {
-                        panic!("Ran while thrice: ")
-                    }
                 }
             }
         }

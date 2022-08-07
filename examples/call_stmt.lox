@@ -1,1 +1,1 @@
-fibonnaci(32);
+print clock();

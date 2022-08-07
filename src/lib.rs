@@ -9,4 +9,7 @@ pub mod parser;
 
 pub mod interpreter;
 
+mod callable;
+mod function;
+
 mod utils;

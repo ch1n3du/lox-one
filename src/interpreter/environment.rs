@@ -5,7 +5,7 @@ use crate::lox_literal::LoxLiteral;
 #[derive(Debug, Clone)]
 pub struct Environment {
     pub enclosing: Option<Box<Environment>>,
-    values: HashMap<String, LoxLiteral>,
+    pub values: HashMap<String, LoxLiteral>,
 }
 
 impl Environment {
@@ -13,6 +13,19 @@ impl Environment {
         Environment {
             enclosing: None,
             values: HashMap::new(),
+        }
+    }
+
+    pub fn from(raw_vals: Vec<(String, LoxLiteral)>) -> Environment {
+        let mut values = HashMap::new();
+
+        for (name, value) in raw_vals {
+            values.insert(name, value);
+        }
+
+        Environment {
+            enclosing: None,
+            values,
         }
     }
 
@@ -31,7 +44,7 @@ impl Environment {
         } else {
             match self.enclosing.as_ref() {
                 Some(prev) => prev.get(name),
-                None => None
+                None => None,
             }
         }
     }
@@ -40,7 +53,7 @@ impl Environment {
         self.values.insert(name.to_string(), initializer);
     }
 
-    pub fn assign(&mut self, name: &str, value: LoxLiteral) -> Option<()>{
+    pub fn assign(&mut self, name: &str, value: LoxLiteral) -> Option<()> {
         if self.values.contains_key(name) {
             self.define(name, value);
             return Some(());
@@ -48,8 +61,7 @@ impl Environment {
 
         match &mut self.enclosing {
             Some(enclosing) => enclosing.assign(name, value),
-            None => None
+            None => None,
         }
     }
-
 }

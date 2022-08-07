@@ -190,11 +190,54 @@ impl Parser {
                 ],
             })
         }
-
-        // panic!("\nOh no! \n\tCurrent: {:?}\n\tNext: {:?}", self.previous(), self.peek())
     }
 
-    /// unary -> ( "!" | "-" ) unary | primary ;
+    /// arguments -> expression ( "," expression )* ;
+    fn arguments(&mut self) -> Result<Vec<Expr>, ParserError> {
+        let mut args: Vec<Expr> = Vec::new();
+
+        args.push(self.expression()?);
+
+        while self.matches(vec![TokenType::Comma]) {
+            args.push(self.expression()?)
+        }
+
+        if args.len() > 250 {
+            Err(ParserError::ArgumentLimitReached {
+                line_no: self.line_no(),
+            })
+        } else {
+            Ok(args)
+        }
+    }
+
+    /// call  -> primary ( "(" arguments? ")" )* ;
+    fn call(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.matches(vec![TokenType::LeftParen]) {
+                if self.matches(vec![TokenType::RightParen]) {
+                    expr = Expr::Call {
+                        callee: Box::new(expr),
+                        arguments: Vec::new(),
+                    }
+                } else {
+                    expr = Expr::Call {
+                        callee: Box::new(expr),
+                        arguments: self.arguments()?,
+                    };
+                    self.consume(TokenType::RightParen)?;
+                }
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    /// unary -> ( "!" | "-" ) unary | call ;
     fn unary(&mut self) -> Result<Expr, ParserError> {
         if self.matches(vec![TokenType::Bang, TokenType::Minus]) {
             let op = self.previous().unwrap();
@@ -205,7 +248,7 @@ impl Parser {
                 rhs: Box::new(rhs),
             })
         } else {
-            self.primary()
+            self.call()
         }
     }
 
@@ -354,7 +397,7 @@ impl Parser {
         let expr = self.logical_or()?;
 
         match &expr {
-            Expr::Identifier { name, line_no :_ } => {
+            Expr::Identifier { name, line_no: _ } => {
                 if self.matches(vec![TokenType::Equal]) {
                     let value = Box::new(self.assignment()?);
 
@@ -483,17 +526,26 @@ impl Parser {
             condition.unwrap()
         };
 
-        let while_body: Stmt = if let Some(increment) = increment { 
-            Stmt::Block { declarations: vec![self.statement()?, Stmt::ExprStmt(increment)] }
+        let while_body: Stmt = if let Some(increment) = increment {
+            Stmt::Block {
+                declarations: vec![self.statement()?, Stmt::ExprStmt(increment)],
+            }
         } else {
-            Stmt::Block { declarations: vec![self.statement()?] }
+            Stmt::Block {
+                declarations: vec![self.statement()?],
+            }
         };
 
-        let while_stmt = Stmt::WhileStmt { condition, body: Box::new(while_body) };
+        let while_stmt = Stmt::WhileStmt {
+            condition,
+            body: Box::new(while_body),
+        };
 
         block_declarations.push(while_stmt);
 
-        Ok(Stmt::Block { declarations: block_declarations })
+        Ok(Stmt::Block {
+            declarations: block_declarations,
+        })
     }
 
     /// statement -> exprStmt
@@ -662,5 +714,10 @@ mod tests {
     #[test]
     fn can_parse_for_statements() {
         assert_can_parse_file("examples/for_stmt.lox", false);
+    }
+
+    #[test]
+    fn can_parse_call_expressions() {
+        assert_can_parse_file("examples/call_stmt.lox", false);
     }
 }

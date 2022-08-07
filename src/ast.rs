@@ -30,6 +30,10 @@ pub enum Expr {
         value: Box<Expr>,
         line_no: usize,
     },
+    Call {
+        callee: Box<Expr>,
+        arguments: Vec<Expr>,
+    },
 }
 
 impl fmt::Display for Expr {
@@ -40,7 +44,7 @@ impl fmt::Display for Expr {
             Literal(literal) => write!(f, "{}", literal),
             Grouping(grouping) => write!(f, "(grouping {})", grouping),
             Unary { op, rhs } => write!(f, "({} {})", op.token_type, rhs),
-            Binary { lhs, op, rhs } => write!(f, "({} {} {})", op.token_type, lhs, rhs),
+            Binary { lhs, op, rhs } => write!(f, "({} {} {})", lhs, op.token_type, rhs),
             Ternary {
                 condition,
                 result_1,
@@ -52,6 +56,19 @@ impl fmt::Display for Expr {
                 value,
                 line_no: _,
             } => write!(f, "{} = {}", name, value),
+            Call { callee, arguments } => {
+                let args = if arguments.len() == 0 {
+                    String::new()
+                } else {
+                    arguments
+                        .iter()
+                        .fold(format!("{}", arguments[0]), |acc, arg| {
+                            format!("{}, {}", acc, arg)
+                        })
+                };
+
+                write!(f, "{}({})", callee, args)
+            }
         }
     }
 }

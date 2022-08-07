@@ -15,6 +15,9 @@ pub enum ParserError {
         line_no: usize,
         token_types: Vec<TokenType>,
     },
+    ArgumentLimitReached {
+        line_no: usize,
+    },
 }
 
 impl fmt::Display for ParserError {
@@ -53,6 +56,13 @@ impl fmt::Display for ParserError {
                     )
                 }
             },
+            &ArgumentLimitReached { line_no } => {
+                write!(
+                    f,
+                    "Argument limit reached can not have more than 250 arguments, on line {}.",
+                    line_no
+                )
+            }
         }
     }
 }

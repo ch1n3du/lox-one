@@ -1,7 +1,9 @@
 mod environment;
-mod runtime_error;
+mod globals;
+pub mod runtime_error;
 
 use crate::ast::{Expr, Stmt};
+use crate::function::Function;
 use crate::lox_literal::LoxLiteral;
 use crate::token_type::TokenType;
 
@@ -11,14 +13,18 @@ use self::runtime_error::RuntimeError;
 #[derive(Debug)]
 pub struct Interpreter {
     environment: Box<Environment>,
-    flag: bool
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
+        let mut environment = Environment::new();
+
+        environment.values.insert(
+            "clock".to_string(),
+            LoxLiteral::Function(Function::new_native("clock".to_string(), 0, globals::clock)),
+        );
         Interpreter {
-            environment: Box::new(Environment::new()),
-            flag: false
+            environment: Box::new(environment),
         }
     }
 
@@ -150,6 +156,31 @@ impl Interpreter {
                     self.evaluate(result_2)
                 }
             }
+            Call { callee, arguments } => {
+                let callee = self.evaluate(callee)?;
+
+                if let Some(callable) = callee.as_callable() {
+                    if callable.arity() == arguments.len() {
+                        let mut evaluated_arguments = Vec::new();
+
+                        for argument in arguments {
+                            evaluated_arguments.push(self.evaluate(argument)?)
+                        }
+
+                        callable.call(self, &evaluated_arguments)
+                    } else {
+                        Err(RuntimeError::IncorrectArity {
+                            name: callable.name(),
+                            line_no: 666,
+                        })
+                    }
+                } else {
+                    Err(RuntimeError::NotCallable {
+                        type_name: callee,
+                        line_no: 666,
+                    })
+                }
+            }
         }
     }
 
@@ -161,7 +192,10 @@ impl Interpreter {
             ExprStmt(expr) => {
                 self.evaluate(expr)?;
             }
-            PrintStmt(expr) => println!("{}", self.evaluate(expr)?),
+            PrintStmt(expr) => {
+                println!("Raw: {}", expr);
+                println!("{}", self.evaluate(expr)?);
+            }
             Var { name, initializer } => {
                 let initializer = self.evaluate(initializer)?;
                 self.environment.define(name, initializer);
@@ -222,6 +256,11 @@ mod test {
         }
 
         let mut interpreter = Interpreter::new();
+
+        if verbose {
+            println!("Interpreter:\n{:?}", interpreter);
+        }
+
         interpreter.interpret(&statements).unwrap();
 
         interpreter
@@ -327,6 +366,14 @@ mod test {
         assert_execution_of_file(
             "Errors executing While statements",
             "examples/for_stmt.lox",
+            false,
+        );
+    }
+    #[test]
+    fn executes_call_statements() {
+        assert_execution_of_file(
+            "Errors executing While statements",
+            "examples/call_stmt.lox",
             false,
         );
     }

@@ -28,5 +28,5 @@ pub fn log_items<T: Display>(log_title: &str, items: &Vec<T>) {
         // println!("\nFinished reporting errors.");
         println!("\n{}\n", sep);
     }
-    panic!()
+    // panic!()
 }

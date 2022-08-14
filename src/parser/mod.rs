@@ -3,15 +3,15 @@
            &                         - Moliere
 */
 
-mod parser_error;
+pub mod error;
 
 use crate::token::Token;
 use crate::token_type::TokenType;
 
 use crate::ast::{Expr, Stmt};
-use crate::lox_literal::LoxLiteral;
+use crate::lox_value::LoxValue;
 
-use parser_error::ParserError;
+use error::ParserError;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -49,8 +49,8 @@ impl Parser {
     }
 
     /// Gets the line number of the previous token.
-    fn line_no(&self) -> usize {
-        self.previous().unwrap().line
+    fn position(&self) -> usize {
+        self.previous().unwrap().position
     }
 
     /// Return the token at current and increments self.current.
@@ -157,13 +157,13 @@ impl Parser {
             let expr = self.expression()?;
             self.consume(TokenType::RightParen)?;
 
-            return Ok(Expr::Grouping(Box::new(expr)));
+            return Ok(Expr::Grouping{ expr: Box::new(expr), position: self.p});
         } else if self.matches(vec![TokenType::Identifier]) {
             let tok = self.previous().unwrap();
             let literal = tok.literal.unwrap();
 
             match literal {
-                LoxLiteral::Identifier(name) => Ok(Expr::Identifier {
+                LoxValue::Identifier(name) => Ok(Expr::Identifier {
                     name,
                     line_no: tok.line,
                 }),
@@ -521,7 +521,7 @@ impl Parser {
 
         // Parse for loop
         let condition = if condition.is_none() {
-            Expr::Literal(LoxLiteral::Boolean(true))
+            Expr::Literal(LoxValue::Boolean(true))
         } else {
             condition.unwrap()
         };
@@ -577,7 +577,7 @@ impl Parser {
         let literal = self.advance().unwrap().literal.unwrap();
 
         let name = match literal {
-            LoxLiteral::Identifier(s) => s,
+            LoxValue::Identifier(s) => s,
             _ => {
                 return Err(ParserError::ExpectedOneOf {
                     line_no: self.line_no(),
@@ -589,7 +589,7 @@ impl Parser {
         let initializer = if self.matches(vec![TokenType::Equal]) {
             self.expression()?
         } else {
-            Expr::Literal(LoxLiteral::Nil)
+            Expr::Literal(LoxValue::Nil)
         };
 
         self.consume(TokenType::Semicolon)?;

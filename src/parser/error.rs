@@ -66,3 +66,5 @@ impl fmt::Display for ParserError {
         }
     }
 }
+
+pub type ParserResult<T> = Result<T, ParserError>;

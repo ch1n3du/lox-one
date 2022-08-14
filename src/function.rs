@@ -1,17 +1,24 @@
 use crate::{
     callable::Callable,
     interpreter::{runtime_error::RuntimeError, Interpreter},
-    lox_literal::LoxLiteral,
+    lox_value::LoxValue, ast::Stmt,
 };
 
 use std::fmt;
+
+#[derive(Debug, Clone)]
+pub struct FunDecl {
+    name: String,
+    params: Vec<LoxValue>,
+    body: Box<Stmt>,
+}
 
 #[derive(Clone)]
 pub enum Function {
     Native {
         name: String,
         arity: usize,
-        callable: fn(&mut Interpreter, &[LoxLiteral]) -> Result<LoxLiteral, RuntimeError>,
+        callable: fn(&mut Interpreter, &[LoxValue]) -> Result<LoxValue, RuntimeError>,
     },
 }
 
@@ -19,7 +26,7 @@ impl Function {
     pub fn new_native(
         name: String,
         arity: usize,
-        callable: fn(&mut Interpreter, &[LoxLiteral]) -> Result<LoxLiteral, RuntimeError>,
+        callable: fn(&mut Interpreter, &[LoxValue]) -> Result<LoxValue, RuntimeError>,
     ) -> Function {
         Function::Native {
             name,
@@ -57,8 +64,8 @@ impl Callable for Function {
     fn call(
         &self,
         interpreter: &mut Interpreter,
-        args: &[LoxLiteral],
-    ) -> Result<LoxLiteral, RuntimeError> {
+        args: &[LoxValue],
+    ) -> Result<LoxValue, RuntimeError> {
         use Function::*;
 
         match self {

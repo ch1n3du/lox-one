@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::lox_literal::LoxLiteral;
-use crate::token::Token;
+use crate::lox_value::LoxValue;
+use crate::token::{Token, Position};
 use crate::token_type::TokenType;
 
 pub struct Scanner {
@@ -9,6 +9,7 @@ pub struct Scanner {
     pub tokens: Vec<Token>,
     pub start: usize,
     pub current: usize,
+    pub column: usize,
     pub line: usize,
     pub keywords: HashMap<&'static str, TokenType>,
 }
@@ -20,6 +21,7 @@ impl Scanner {
             tokens: Vec::new(),
             start: 0,
             current: 0,
+            column: 1,
             line: 1,
             keywords: HashMap::from([
                 ("and", TokenType::And),
@@ -47,10 +49,16 @@ impl Scanner {
         self.current >= self.source.len()
     }
 
+    fn increment_current(&mut self) {
+        self.current += 1;
+        self.column += 1;
+    }
+
     // Yields value at self.current and increment self.current.
     fn advance(&mut self) -> u8 {
         let res = self.source[self.current];
-        self.current += 1;
+        // self.current += 1;
+        self.increment_current();
         res
     }
 
@@ -73,18 +81,23 @@ impl Scanner {
             return false;
         };
 
-        self.current += 1;
+        // self.current += 1;
+        self.increment_current();
         true
     }
 
-    fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<LoxLiteral>) {
+    fn position(&self) -> Position {
+        Position::new(self.line, self.column)
+    }
+
+    fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<LoxValue>) {
         let tok = match literal {
             Some(_) => {
                 // let lexeme = Some(self.get_curr_string());
                 // TODO Readd Lexeme
-                Token::new(self.line, token_type, literal)
+                Token::new(token_type, literal, self.position())
             }
-            None => Token::new(self.line, token_type, None),
+            None => Token::new(token_type, None, self.position()),
         };
 
         self.tokens.push(tok)
@@ -112,10 +125,13 @@ impl Scanner {
         } else if self.matches_next(b'*') {
             while !self.is_at_end() {
                 if self.peek() == b'\n' {
-                    self.line += 1
+                    // self.line += 1
+                    self.increment_current()
                 }
                 if self.peek() == b'*' && self.peek_twice() == b'/' {
-                    self.current += 2;
+                    // self.current += 2;
+                    self.increment_current();
+                    self.increment_current();
                     break;
                 }
 
@@ -136,7 +152,7 @@ impl Scanner {
 
         self.add_token_with_literal(
             TokenType::String,
-            Some(LoxLiteral::String(self.get_curr_string())),
+            Some(LoxValue::String(self.get_curr_string())),
         )
     }
 
@@ -153,7 +169,7 @@ impl Scanner {
         }
 
         let number = self.get_curr_string().parse::<f64>().unwrap();
-        self.add_token_with_literal(TokenType::Number, Some(LoxLiteral::Number(number)));
+        self.add_token_with_literal(TokenType::Number, Some(LoxValue::Number(number)));
     }
 
     fn scan_identifier(&mut self) {
@@ -168,17 +184,17 @@ impl Scanner {
 
             match token_type {
                 TokenType::True => {
-                    self.add_token_with_literal(token_type, Some(LoxLiteral::Boolean(true)))
+                    self.add_token_with_literal(token_type, Some(LoxValue::Boolean(true)))
                 }
                 TokenType::False => {
-                    self.add_token_with_literal(token_type, Some(LoxLiteral::Boolean(false)))
+                    self.add_token_with_literal(token_type, Some(LoxValue::Boolean(false)))
                 }
                 _ => self.add_token(token_type),
             }
         } else {
             self.add_token_with_literal(
                 TokenType::Identifier,
-                Some(LoxLiteral::Identifier(literal)),
+                Some(LoxValue::Identifier(literal)),
             )
         }
     }
@@ -263,8 +279,8 @@ impl Scanner {
         let mut line_no = 0;
 
         for (index, token) in self.tokens.iter().enumerate() {
-            if token.line != line_no {
-                line_no = token.line;
+            if token.position.line != line_no {
+                line_no = token.position.line;
                 println!("\nLine {}", line_no);
                 println!("==================");
             }

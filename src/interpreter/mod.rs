@@ -1,14 +1,16 @@
 mod environment;
 mod globals;
-pub mod runtime_error;
+pub mod error;
+#[cfg(test)]
+mod tests;
 
 use crate::ast::{Expr, Stmt};
 use crate::function::Function;
-use crate::lox_literal::LoxLiteral;
+use crate::lox_value::LoxValue;
 use crate::token_type::TokenType;
 
 use self::environment::Environment;
-use self::runtime_error::RuntimeError;
+use self::error::RuntimeError;
 
 #[derive(Debug)]
 pub struct Interpreter {
@@ -21,7 +23,7 @@ impl Interpreter {
 
         environment.values.insert(
             "clock".to_string(),
-            LoxLiteral::Function(Function::new_native("clock".to_string(), 0, globals::clock)),
+            LoxValue::Function(Function::new_native("clock".to_string(), 0, globals::clock)),
         );
         Interpreter {
             environment: Box::new(environment),
@@ -29,119 +31,116 @@ impl Interpreter {
     }
 
     /// Evaluates an expression.
-    pub fn evaluate(&mut self, expr: &Expr) -> Result<LoxLiteral, RuntimeError> {
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<LoxValue, RuntimeError> {
         use Expr::*;
-        use LoxLiteral::*;
+        use LoxValue::*;
         use TokenType::*;
 
         match expr {
-            Literal(value) => Ok(value.to_owned()),
-            Grouping(inner_expr) => self.evaluate(inner_expr),
-            Expr::Identifier { name, line_no } => {
+            Value {value, position:_ } => Ok(value.to_owned()),
+            Grouping(inner_expr, position) => self.evaluate(inner_expr),
+            &Expr::Identifier(name, position) => {
                 let value = self.environment.get(&name);
 
                 if value.is_some() {
                     Ok(value.unwrap().to_owned())
                 } else {
                     Err(RuntimeError::VarDoesNotExist {
-                        name: name.to_owned(),
-                        line_no: line_no.to_owned(),
+                        name,
+                        position,
                     })
                 }
             }
-            Assignment {
+            &Assignment {
                 name,
                 value,
-                line_no,
+                position
             } => {
                 let previous = self.environment.get(&name);
 
                 if previous.is_none() {
-                    Err(RuntimeError::VarDoesNotExist {
-                        name: name.clone(),
-                        line_no: line_no.clone(),
-                    })
+                    Err(RuntimeError::VarDoesNotExist { name, position })
                 } else {
-                    let value = self.evaluate(value)?;
-                    self.environment.assign(name, value);
+                    let value = self.evaluate(value.as_ref())?;
+                    self.environment.assign(name.as_str(), value);
 
-                    Ok(LoxLiteral::Nil)
+                    Ok(LoxValue::Nil)
                 }
             }
-            Unary { op, rhs } => match (&op.token_type, self.evaluate(rhs)?) {
-                (Minus, LoxLiteral::Number(n)) => Ok(LoxLiteral::Number(-n)),
+            &Unary { op, rhs, position } => match (&op.token_type, self.evaluate(rhs.as_ref())?) {
+                (Minus, LoxValue::Number(n)) => Ok(LoxValue::Number(-n)),
                 (Minus, _) => Err(RuntimeError::Generic(
                     "Expected a number.".to_string(),
-                    op.line,
+                    op.position,
                 )),
 
-                (Bang, Boolean(b)) => Ok(LoxLiteral::Boolean(!b)),
+                (Bang, Boolean(b)) => Ok(LoxValue::Boolean(!b)),
                 (Bang, _) => Err(RuntimeError::Generic(
                     "Expected a boolean expression".to_string(),
-                    op.line,
+                    op.position,
                 )),
 
                 _ => Err(RuntimeError::Generic(
                     "Expected a unary expression.".to_string(),
-                    op.line,
+                    op.position,
                 )),
             },
-            Binary { lhs, op, rhs } => {
+            Binary { lhs, op, rhs, position } => {
                 let (lhs, rhs) = (self.evaluate(lhs)?, self.evaluate(rhs)?);
 
                 match (&op.token_type, lhs, rhs) {
                     // Arithmetic Operators
-                    (Plus, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Number(l + r))
+                    (Plus, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Number(l + r))
                     }
-                    (Minus, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Number(l - r))
+                    (Minus, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Number(l - r))
                     }
-                    (Star, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Number(l * r))
+                    (Star, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Number(l * r))
                     }
-                    (Slash, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
+                    (Slash, LoxValue::Number(l), LoxValue::Number(r)) => {
                         if r == 0.0 {
-                            return Err(RuntimeError::DivisionByZero(op.line));
+                            return Err(RuntimeError::DivisionByZero(op.position));
                         }
-                        Ok(LoxLiteral::Number(l / r))
+                        Ok(LoxValue::Number(l / r))
                     }
 
                     // Logical Operators
                     (And, left, right) => {
-                        Ok(LoxLiteral::Boolean(left.is_truthy() && right.is_truthy()))
+                        Ok(LoxValue::Boolean(left.is_truthy() && right.is_truthy()))
                     }
                     (Or, left, right) => {
-                        Ok(LoxLiteral::Boolean(left.is_truthy() || right.is_truthy()))
+                        Ok(LoxValue::Boolean(left.is_truthy() || right.is_truthy()))
                     }
 
                     // Comparison Operators
-                    (EqualEqual, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Boolean(l == r))
+                    (EqualEqual, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Boolean(l == r))
                     }
-                    (BangEqual, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Boolean(l != r))
+                    (BangEqual, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Boolean(l != r))
                     }
-                    (Greater, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Boolean(l > r))
+                    (Greater, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Boolean(l > r))
                     }
-                    (GreaterEqual, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Boolean(l >= r))
+                    (GreaterEqual, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Boolean(l >= r))
                     }
-                    (Less, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Boolean(l < r))
+                    (Less, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Boolean(l < r))
                     }
-                    (LessEqual, LoxLiteral::Number(l), LoxLiteral::Number(r)) => {
-                        Ok(LoxLiteral::Boolean(l <= r))
+                    (LessEqual, LoxValue::Number(l), LoxValue::Number(r)) => {
+                        Ok(LoxValue::Boolean(l <= r))
                     }
 
                     // String Concatenation
-                    (Plus, LoxLiteral::String(s1), LoxLiteral::String(s2)) => {
-                        Ok(LoxLiteral::String(s1 + s2.as_str()))
+                    (Plus, LoxValue::String(s1), LoxValue::String(s2)) => {
+                        Ok(LoxValue::String(s1 + s2.as_str()))
                     }
                     _ => Err(RuntimeError::Generic(
                         "Don't really know".to_string(),
-                        op.line,
+                        op.position,
                     )),
                 }
             }
@@ -149,6 +148,7 @@ impl Interpreter {
                 condition,
                 result_1,
                 result_2,
+                postion,
             } => {
                 if self.evaluate(condition)?.is_truthy() {
                     self.evaluate(result_1)
@@ -156,7 +156,7 @@ impl Interpreter {
                     self.evaluate(result_2)
                 }
             }
-            Call { callee, arguments } => {
+            Call { callee, arguments, postion } => {
                 let callee = self.evaluate(callee)?;
 
                 if let Some(callable) = callee.as_callable() {
@@ -171,13 +171,13 @@ impl Interpreter {
                     } else {
                         Err(RuntimeError::IncorrectArity {
                             name: callable.name(),
-                            line_no: 666,
+                            position: postion.to_owned(),
                         })
                     }
                 } else {
                     Err(RuntimeError::NotCallable {
                         type_name: callee,
-                        line_no: 666,
+                        position: postion.to_owned(),
                     })
                 }
             }
@@ -237,144 +237,3 @@ impl Interpreter {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::parser::Parser;
-    use crate::scanner::Scanner;
-
-    use crate::utils::{log_items, read_file};
-
-    fn assert_execution_of(title: &str, src: &str, verbose: bool) -> Interpreter {
-        let tokens = Scanner::tokens_from_str(src, verbose);
-
-        let mut parser = Parser::new(tokens);
-        let (statements, errors) = parser.program();
-
-        if errors.len() != 0 {
-            log_items(title, &errors)
-        }
-
-        let mut interpreter = Interpreter::new();
-
-        if verbose {
-            println!("Interpreter:\n{:?}", interpreter);
-        }
-
-        interpreter.interpret(&statements).unwrap();
-
-        interpreter
-    }
-
-    fn assert_execution_of_file(title: &str, path: &str, verbose: bool) -> Interpreter {
-        let src = read_file(path);
-        assert_execution_of(title, src.as_str(), verbose)
-    }
-
-    #[test]
-    fn executes_expr_statements() {
-        assert_execution_of_file(
-            "Errors executing Expression statements",
-            "examples/expr_stmt.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_print_statements() {
-        assert_execution_of_file(
-            "Errors executing Print statements",
-            "examples/print_stmt.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_variables() {
-        assert_execution_of_file(
-            "Errors executing Variable declarations",
-            "examples/variables.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_assignment_expressions() {
-        assert_execution_of_file(
-            "Errors executing Variable declarations",
-            "examples/assignment.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_block_statements() {
-        assert_execution_of_file(
-            "Errors executing Block statements",
-            "examples/block_stmt.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_if_statements() {
-        assert_execution_of_file(
-            "Errors executing If statements",
-            "examples/if_stmt.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_if_else_statements() {
-        assert_execution_of_file(
-            "Errors executing If/Else statements",
-            "examples/if_else_stmt.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_logical_or() {
-        assert_execution_of_file(
-            "Errors executing Logical Or",
-            "examples/logic_or.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_logical_and() {
-        assert_execution_of_file(
-            "Errors executing Logical And",
-            "examples/logic_and.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_while_statements() {
-        assert_execution_of_file(
-            "Errors executing While statements",
-            "examples/while_stmt.lox",
-            false,
-        );
-    }
-
-    #[test]
-    fn executes_for_statements() {
-        assert_execution_of_file(
-            "Errors executing While statements",
-            "examples/for_stmt.lox",
-            false,
-        );
-    }
-    #[test]
-    fn executes_call_statements() {
-        assert_execution_of_file(
-            "Errors executing While statements",
-            "examples/call_stmt.lox",
-            false,
-        );
-    }
-}

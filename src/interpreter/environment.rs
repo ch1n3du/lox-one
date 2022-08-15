@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::lox_literal::LoxLiteral;
+use crate::lox_value::LoxValue;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
     pub enclosing: Option<Box<Environment>>,
-    pub values: HashMap<String, LoxLiteral>,
+    pub values: HashMap<String, LoxValue>,
 }
 
 impl Environment {
@@ -16,7 +16,7 @@ impl Environment {
         }
     }
 
-    pub fn from(raw_vals: Vec<(String, LoxLiteral)>) -> Environment {
+    pub fn from(raw_vals: Vec<(String, LoxValue)>) -> Environment {
         let mut values = HashMap::new();
 
         for (name, value) in raw_vals {
@@ -36,7 +36,7 @@ impl Environment {
         }
     }
 
-    pub fn get(&self, name: &str) -> Option<LoxLiteral> {
+    pub fn get(&self, name: &str) -> Option<LoxValue> {
         let value = self.values.get(name);
 
         if value.is_some() {
@@ -49,11 +49,11 @@ impl Environment {
         }
     }
 
-    pub fn define(&mut self, name: &str, initializer: LoxLiteral) {
+    pub fn define(&mut self, name: &str, initializer: LoxValue) {
         self.values.insert(name.to_string(), initializer);
     }
 
-    pub fn assign(&mut self, name: &str, value: LoxLiteral) -> Option<()> {
+    pub fn assign(&mut self, name: &str, value: LoxValue) -> Option<()> {
         if self.values.contains_key(name) {
             self.define(name, value);
             return Some(());

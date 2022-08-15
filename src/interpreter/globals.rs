@@ -1,10 +1,10 @@
-use crate::lox_literal::LoxLiteral;
+use crate::lox_value::LoxValue;
 
-use super::{runtime_error::RuntimeError, Interpreter};
+use crate::interpreter::{error::RuntimeError, Interpreter};
 
 pub fn clock(
     interpreter: &mut Interpreter,
-    args: &[LoxLiteral],
-) -> Result<LoxLiteral, RuntimeError> {
-    Ok(LoxLiteral::Number(13124312.0))
+    args: &[LoxValue],
+) -> Result<LoxValue, RuntimeError> {
+    Ok(LoxValue::Number(13124312.0))
 }

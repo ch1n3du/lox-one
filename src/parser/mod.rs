@@ -1,17 +1,21 @@
 /*
 "Grammar, which knows how to control even kings."
-           &                         - Moliere
+                                     - Moliere
 */
 
 pub mod error;
+#[cfg(test)]
+mod tests;
 
-use crate::token::Token;
+use crate::token::{Token, Position};
 use crate::token_type::TokenType;
 
 use crate::ast::{Expr, Stmt};
 use crate::lox_value::LoxValue;
 
 use error::ParserError;
+
+use self::error::ParserResult;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -49,7 +53,7 @@ impl Parser {
     }
 
     /// Gets the line number of the previous token.
-    fn position(&self) -> usize {
+    fn position(&self) -> Position {
         self.previous().unwrap().position
     }
 
@@ -93,16 +97,16 @@ impl Parser {
     }
 
     /// Consumes a token if it matches token_type else returns.
-    fn consume(&mut self, token_type: TokenType) -> Result<Token, ParserError> {
+    fn consume(&mut self, token_type: TokenType) -> ParserResult<Token> {
         match (self.check(&token_type), self.advance()) {
             (true, Some(token)) => Ok(token),
-            (true, None) => Err(ParserError::Eof(self.line_no())),
+            (true, None) => Err(ParserError::Eof(self.position())),
             _ => {
                 println!("Wrong Token Consumeed: {:?}", self.previous().unwrap());
-                Err(ParserError::ExpectedOneOf {
-                    line_no: self.line_no(),
-                    token_types: vec![token_type],
-                })
+                Err(ParserError::ExpectedOneOf(
+                    vec![token_type],
+                    self.position(),
+                ))
             }
         }
     }
@@ -140,7 +144,7 @@ impl Parser {
 
     /// primary -> NUMBER | STRING | "true" | "false" | "nil"
     ///          | "("Expr  ")" | IDENTIFIER                  ;
-    fn primary(&mut self) -> Result<Expr, ParserError> {
+    fn primary(&mut self) -> ParserResult<Expr> {
         // let curr_token = self.peek().unwrap();
 
         if self.matches(vec![
@@ -150,28 +154,25 @@ impl Parser {
             TokenType::True,
             TokenType::Nil,
         ]) {
-            return Ok(Expr::Literal(self.previous().unwrap().literal.unwrap()));
+            return Ok(Expr::Value{ value: self.previous().unwrap().literal.unwrap(), position: self.position() });
         }
 
         if self.matches(vec![TokenType::LeftParen]) {
             let expr = self.expression()?;
             self.consume(TokenType::RightParen)?;
 
-            return Ok(Expr::Grouping{ expr: Box::new(expr), position: self.p});
+            return Ok(Expr::Grouping(Box::new(expr), self.position()));
         } else if self.matches(vec![TokenType::Identifier]) {
             let tok = self.previous().unwrap();
             let literal = tok.literal.unwrap();
 
             match literal {
-                LoxValue::Identifier(name) => Ok(Expr::Identifier {
-                    name,
-                    line_no: tok.line,
-                }),
+                LoxValue::Identifier(name) => Ok(Expr::Identifier(name, self.position())),
                 _ => {
-                    return Err(ParserError::ExpectedOneOf {
-                        line_no: self.line_no(),
-                        token_types: vec![TokenType::Identifier],
-                    })
+                    return Err(ParserError::ExpectedOneOf(
+                        vec![TokenType::Identifier],
+                        self.position()
+                    ))
                 }
             }
         } else {
@@ -179,21 +180,21 @@ impl Parser {
                 "Invalid Token in primary rule: '{:?}'",
                 self.peek().unwrap()
             );
-            Err(ParserError::ExpectedOneOf {
-                line_no: self.line_no(),
-                token_types: vec![
+            Err(ParserError::ExpectedOneOf(
+                vec![
                     TokenType::Number,
                     TokenType::String,
                     TokenType::False,
                     TokenType::True,
                     TokenType::False,
                 ],
-            })
+                self.position()
+            ))
         }
     }
 
     /// arguments -> expression ( "," expression )* ;
-    fn arguments(&mut self) -> Result<Vec<Expr>, ParserError> {
+    fn arguments(&mut self) -> ParserResult<Vec<Expr>> {
         let mut args: Vec<Expr> = Vec::new();
 
         args.push(self.expression()?);
@@ -203,16 +204,14 @@ impl Parser {
         }
 
         if args.len() > 250 {
-            Err(ParserError::ArgumentLimitReached {
-                line_no: self.line_no(),
-            })
+            Err(ParserError::ArgumentLimitReached(self.position()))
         } else {
             Ok(args)
         }
     }
 
     /// call  -> primary ( "(" arguments? ")" )* ;
-    fn call(&mut self) -> Result<Expr, ParserError> {
+    fn call(&mut self) -> ParserResult<Expr> {
         let mut expr = self.primary()?;
 
         loop {
@@ -221,11 +220,13 @@ impl Parser {
                     expr = Expr::Call {
                         callee: Box::new(expr),
                         arguments: Vec::new(),
+                        postion: self.position(),
                     }
                 } else {
                     expr = Expr::Call {
                         callee: Box::new(expr),
                         arguments: self.arguments()?,
+                        postion: self.position(),
                     };
                     self.consume(TokenType::RightParen)?;
                 }
@@ -238,14 +239,16 @@ impl Parser {
     }
 
     /// unary -> ( "!" | "-" ) unary | call ;
-    fn unary(&mut self) -> Result<Expr, ParserError> {
+    fn unary(&mut self) -> ParserResult<Expr> {
         if self.matches(vec![TokenType::Bang, TokenType::Minus]) {
             let op = self.previous().unwrap();
+            let position = op.position.clone();
             let rhs = self.unary()?;
 
             Ok(Expr::Unary {
                 op,
                 rhs: Box::new(rhs),
+                position,
             })
         } else {
             self.call()
@@ -253,18 +256,19 @@ impl Parser {
     }
 
     /// factor -> unary ( ( "/" | "*" ) factor )* ;
-    fn factor(&mut self) -> Result<Expr, ParserError> {
+    fn factor(&mut self) -> ParserResult<Expr> {
         let mut expr = self.unary()?;
 
         while self.matches(vec![TokenType::Slash, TokenType::Star]) {
             let op = self.previous().unwrap();
-
+            let position = op.position.clone();
             let rhs = self.factor()?;
 
             expr = Expr::Binary {
                 lhs: Box::new(expr),
                 op,
                 rhs: Box::new(rhs),
+                position,
             };
         }
 
@@ -272,18 +276,19 @@ impl Parser {
     }
 
     /// term -> factor ( ( "-" | "+" ) factor )* ;
-    fn term(&mut self) -> Result<Expr, ParserError> {
+    fn term(&mut self) -> ParserResult<Expr> {
         let mut expr = self.factor()?;
 
         while self.matches(vec![TokenType::Minus, TokenType::Plus]) {
             let op = self.previous().unwrap();
-
+            let position = op.position.clone();
             let rhs = self.factor()?;
 
             expr = Expr::Binary {
                 lhs: Box::new(expr),
                 op,
                 rhs: Box::new(rhs),
+                position,
             };
         }
 
@@ -291,7 +296,7 @@ impl Parser {
     }
 
     /// comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-    fn comparison(&mut self) -> Result<Expr, ParserError> {
+    fn comparison(&mut self) -> ParserResult<Expr> {
         let mut expr = self.term()?;
 
         while self.matches(vec![
@@ -301,13 +306,14 @@ impl Parser {
             TokenType::GreaterEqual,
         ]) {
             let op = self.previous().unwrap();
-
+            let position = op.position.clone();
             let rhs = self.term()?;
 
             expr = Expr::Binary {
                 lhs: Box::new(expr),
                 op,
                 rhs: Box::new(rhs),
+                position,
             };
         }
 
@@ -315,18 +321,19 @@ impl Parser {
     }
 
     /// equality -> comparison ( ( "!=" | "==" ) comparison)*
-    fn equality(&mut self) -> Result<Expr, ParserError> {
+    fn equality(&mut self) -> ParserResult<Expr> {
         let mut expr = self.comparison()?;
 
         while self.matches(vec![TokenType::BangEqual, TokenType::EqualEqual]) {
             let op = self.previous().unwrap();
-
+            let position = op.position.clone();
             let rhs = self.comparison()?;
 
             expr = Expr::Binary {
                 lhs: Box::new(expr),
                 op,
                 rhs: Box::new(rhs),
+                position,
             };
         }
 
@@ -335,26 +342,27 @@ impl Parser {
 
     ///! Breaks the parser "32 ;\n false ? 32 : 323;\n";
     /// ternary -> expression ( "?" ternary ":" ternary )?
-    fn ternary(&mut self) -> Result<Expr, ParserError> {
+    fn ternary(&mut self) -> ParserResult<Expr> {
         let mut expr = self.equality()?;
 
         if self.matches(vec![TokenType::QuestionMark]) {
             let result_1 = self.ternary()?;
 
             if self.matches(vec![TokenType::Colon]) {
-                let result_2 = self.ternary()?;
+                let result_2 = Box::new(self.ternary()?);
                 expr = Expr::Ternary {
                     condition: Box::new(expr),
                     result_1: Box::new(result_1),
-                    result_2: Box::new(result_2),
+                    result_2,
+                    postion: self.position(),
                 };
 
                 return Ok(expr);
             } else {
-                return Err(ParserError::ExpectedOneOf {
-                    line_no: self.line_no(),
-                    token_types: vec![TokenType::Colon],
-                });
+                return Err(ParserError::ExpectedOneOf(
+                    vec![TokenType::Colon],
+                    self.position(),
+                ));
             }
         }
 
@@ -362,14 +370,18 @@ impl Parser {
     }
 
     /// logical_and -> ternary ("and" ternary)* ;
-    fn logical_and(&mut self) -> Result<Expr, ParserError> {
+    fn logical_and(&mut self) -> ParserResult<Expr> {
         let mut expr = self.ternary()?;
 
         while self.matches(vec![TokenType::And]) {
+            let op = self.previous().unwrap();
+            let position = op.position.clone();
+
             expr = Expr::Binary {
                 lhs: Box::new(expr),
-                op: self.previous().unwrap(),
+                op,
                 rhs: Box::new(self.ternary()?),
+                position,
             };
         }
 
@@ -377,14 +389,18 @@ impl Parser {
     }
 
     /// logical_or -> logic_and ("and" logic_and)* ;
-    fn logical_or(&mut self) -> Result<Expr, ParserError> {
+    fn logical_or(&mut self) -> ParserResult<Expr> {
         let mut expr = self.logical_and()?;
 
         while self.matches(vec![TokenType::Or]) {
+            let op = self.previous().unwrap();
+            let position = op.position.clone();
+
             expr = Expr::Binary {
                 lhs: Box::new(expr),
-                op: self.previous().unwrap(),
+                op,
                 rhs: Box::new(self.logical_and()?),
+                position,
             };
         }
 
@@ -393,18 +409,18 @@ impl Parser {
 
     /// assignment -> IDENTIFIER "=" assignment
     ///             | logical_or ;
-    fn assignment(&mut self) -> Result<Expr, ParserError> {
+    fn assignment(&mut self) -> ParserResult<Expr> {
         let expr = self.logical_or()?;
 
         match &expr {
-            Expr::Identifier { name, line_no: _ } => {
+            Expr::Identifier( name, _position) => {
                 if self.matches(vec![TokenType::Equal]) {
                     let value = Box::new(self.assignment()?);
 
                     Ok(Expr::Assignment {
-                        name: name.clone(),
+                        name: name.to_owned(),
                         value,
-                        line_no: self.line_no(),
+                        position: self.position(),
                     })
                 } else {
                     Ok(expr)
@@ -416,13 +432,13 @@ impl Parser {
 
     /// expression -> logical_or
     ///            |  assignment ;
-    fn expression(&mut self) -> Result<Expr, ParserError> {
+    fn expression(&mut self) -> ParserResult<Expr> {
         let expr = self.assignment()?;
         Ok(expr)
     }
 
     /// exprStatement  -> expression ";";
-    fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
+    fn expression_statement(&mut self) -> ParserResult<Stmt> {
         let stmt = Stmt::ExprStmt(self.expression()?);
         self.consume(TokenType::Semicolon)?;
 
@@ -430,7 +446,7 @@ impl Parser {
     }
 
     /// printStatement -> "print" expression ";";
-    fn print_statement(&mut self) -> Result<Stmt, ParserError> {
+    fn print_statement(&mut self) -> ParserResult<Stmt> {
         let stmt = Stmt::PrintStmt(self.expression()?);
         self.consume(TokenType::Semicolon)?;
 
@@ -438,17 +454,17 @@ impl Parser {
     }
 
     /// block -> "{" declaration* "}" ;
-    fn block(&mut self) -> Result<Stmt, ParserError> {
+    fn block(&mut self) -> ParserResult<Stmt> {
         let mut declarations: Vec<Stmt> = Vec::new();
 
         while !self.matches(vec![TokenType::RightBrace]) {
             declarations.push(self.declaration()?)
         }
 
-        Ok(Stmt::Block { declarations })
+        Ok(Stmt::Block(declarations))
     }
 
-    fn if_statement(&mut self) -> Result<Stmt, ParserError> {
+    fn if_statement(&mut self) -> ParserResult<Stmt> {
         self.consume(TokenType::LeftParen)?;
         let condition = self.expression()?;
         self.consume(TokenType::RightParen)?;
@@ -465,18 +481,19 @@ impl Parser {
             condition,
             true_stmt,
             false_stmt,
+            position: self.position()
         })
     }
 
     /// whileStmt -> "while" "(" expression ")" statement;
-    fn while_statement(&mut self) -> Result<Stmt, ParserError> {
+    fn while_statement(&mut self) -> ParserResult<Stmt> {
         self.consume(TokenType::LeftParen)?;
         let condition = self.expression()?;
         self.consume(TokenType::RightParen)?;
 
         let body = Box::new(self.statement()?);
 
-        Ok(Stmt::WhileStmt { condition, body })
+        Ok(Stmt::WhileStmt { condition, body, position: self.position() })
     }
 
     /// forStmt -> "for" "(" ( varDecl | exprStmt | ";")
@@ -485,7 +502,7 @@ impl Parser {
     fn for_statement(&mut self) -> Result<Stmt, ParserError> {
         self.consume(TokenType::LeftParen)?;
 
-        /// ( varDecl | exprStmt | ";") ;
+        // ( varDecl | exprStmt | ";") ;
         let initializer: Option<Stmt>;
         if self.matches(vec![TokenType::Semicolon]) {
             initializer = None;
@@ -495,7 +512,7 @@ impl Parser {
             initializer = Some(self.expression_statement()?);
         }
 
-        /// expression? ";" ;
+        // expression? ";" ;
         let condition: Option<Expr>;
         if self.matches(vec![TokenType::Semicolon]) {
             condition = None;
@@ -504,7 +521,7 @@ impl Parser {
             self.consume(TokenType::Semicolon)?;
         }
 
-        /// expression? ")" ;
+        // expression? ")" ;
         let increment: Option<Expr>;
         if self.matches(vec![TokenType::RightParen]) {
             increment = None;
@@ -521,31 +538,53 @@ impl Parser {
 
         // Parse for loop
         let condition = if condition.is_none() {
-            Expr::Literal(LoxValue::Boolean(true))
+            Expr::Value{ value: LoxValue::Boolean(true), position: self.position() }
         } else {
             condition.unwrap()
         };
 
         let while_body: Stmt = if let Some(increment) = increment {
-            Stmt::Block {
-                declarations: vec![self.statement()?, Stmt::ExprStmt(increment)],
-            }
+            Stmt::Block(
+                vec![self.statement()?, Stmt::ExprStmt(increment)]
+            )
         } else {
-            Stmt::Block {
-                declarations: vec![self.statement()?],
-            }
+            Stmt::Block(vec![self.statement()?])
         };
 
         let while_stmt = Stmt::WhileStmt {
             condition,
             body: Box::new(while_body),
+            position: self.position(),
         };
 
         block_declarations.push(while_stmt);
 
-        Ok(Stmt::Block {
-            declarations: block_declarations,
-        })
+        Ok(Stmt::Block(block_declarations))
+    }
+
+    /// breakStmt  -> "break" ";" ;
+    fn break_statement(&mut self) -> ParserResult<Stmt> {
+        self.consume(TokenType::Semicolon)?;
+        Ok(Stmt::BreakStmt(self.position()))
+    }
+
+    /// breakStmt  -> "continue" ";" ;
+    fn continue_statement(&mut self) -> ParserResult<Stmt> {
+        self.consume(TokenType::Semicolon)?;
+        Ok(Stmt::ContinueStmt(self.position()))
+    }
+
+    /// returnStmt  -> "return" expression? ";" ;
+    fn return_statement(&mut self) -> ParserResult<Stmt> {
+        let position = self.position();
+        self.consume(TokenType::Semicolon)?;
+
+        if self.matches(vec![TokenType::Semicolon]) {
+            Ok(Stmt::ReturnStmt { expr: None, position })
+        } else {
+            let expr = Some(self.expression()?);
+            Ok(Stmt::ReturnStmt { expr, position })
+        }
     }
 
     /// statement -> exprStmt
@@ -553,8 +592,11 @@ impl Parser {
     ///           |  block   
     ///           |  ifStmt
     ///           |  whileStmt
-    ///           |  forStmt   ;
-    pub fn statement(&mut self) -> Result<Stmt, ParserError> {
+    ///           |  forStmt   
+    ///           |  breakStmt
+    ///           |  continueStmt 
+    ///           |  returntmt     ;
+    pub fn statement(&mut self) -> ParserResult<Stmt> {
         let stmt = if self.matches(vec![TokenType::Print]) {
             self.print_statement()?
         } else if self.matches(vec![TokenType::LeftBrace]) {
@@ -565,6 +607,12 @@ impl Parser {
             self.while_statement()?
         } else if self.matches(vec![TokenType::For]) {
             self.for_statement()?
+        } else if self.matches(vec![TokenType::Break]) {
+            self.break_statement()?
+        } else if self.matches(vec![TokenType::Continue]) {
+            self.continue_statement()?
+        } else if self.matches(vec![TokenType::Return]) {
+            self.return_statement()?
         } else {
             self.expression_statement()?
         };
@@ -573,33 +621,33 @@ impl Parser {
     }
 
     /// varDeclaration -> "var" IDENTIFIER ("=" expression)?;
-    fn var_declaration(&mut self) -> Result<Stmt, ParserError> {
+    fn var_declaration(&mut self) -> ParserResult<Stmt> {
         let literal = self.advance().unwrap().literal.unwrap();
 
         let name = match literal {
             LoxValue::Identifier(s) => s,
             _ => {
-                return Err(ParserError::ExpectedOneOf {
-                    line_no: self.line_no(),
-                    token_types: vec![TokenType::Identifier],
-                })
+                return Err(ParserError::ExpectedOneOf(
+                    vec![TokenType::Identifier],
+                    self.position(),
+                ))
             }
         };
 
         let initializer = if self.matches(vec![TokenType::Equal]) {
             self.expression()?
         } else {
-            Expr::Literal(LoxValue::Nil)
+            Expr::Value{ value: LoxValue::Nil, position: self.position() }
         };
 
         self.consume(TokenType::Semicolon)?;
 
-        Ok(Stmt::Var { name, initializer })
+        Ok(Stmt::Var { name, initializer , postion: self.position() })
     }
 
     /// declaration -> varDeclaration
     ///              | statement      ;
-    fn declaration(&mut self) -> Result<Stmt, ParserError> {
+    fn declaration(&mut self) -> ParserResult<Stmt> {
         if self.matches(vec![TokenType::Var]) {
             self.var_declaration()
         } else {
@@ -624,100 +672,5 @@ impl Parser {
         }
 
         (statements, errors)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    // use super::Parser;
-    // use crate::{parser_errors::ParserError, scanner::Scanner, token_type::TokenType};
-    use super::*;
-
-    use crate::parser::Parser;
-    use crate::scanner::Scanner;
-
-    use crate::utils::{log_items, read_file};
-
-    fn assert_can_parse(title: &str, src: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
-        let tokens = Scanner::tokens_from_str(src, verbose);
-
-        let mut parser = Parser::new(tokens);
-        let (statements, errors) = parser.program();
-
-        if errors.len() != 0 {
-            log_items(title, &errors)
-        }
-
-        (statements, errors)
-    }
-
-    fn assert_can_parse_file(path: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
-        let src = read_file(path);
-
-        assert_can_parse(
-            format!("Errors parsing '{}' file", path).as_str(),
-            src.as_str(),
-            verbose,
-        )
-    }
-
-    #[test]
-    fn can_parse_expr_statements() {
-        assert_can_parse_file("examples/expr_stmt.lox", false);
-    }
-
-    #[test]
-    fn can_parse_print_statements() {
-        assert_can_parse_file("examples/print_stmt.lox", false);
-    }
-
-    #[test]
-    fn can_parse_variable_declarations() {
-        assert_can_parse_file("examples/variables.lox", false);
-    }
-
-    #[test]
-    fn can_parse_assignment_expressions() {
-        assert_can_parse_file("examples/assignment.lox", false);
-    }
-
-    #[test]
-    fn can_parse_block_statements() {
-        assert_can_parse_file("examples/variables.lox", false);
-    }
-
-    #[test]
-    fn can_parse_if_statements() {
-        assert_can_parse_file("examples/if_stmt.lox", false);
-    }
-
-    #[test]
-    fn can_parse_if_else_statements() {
-        assert_can_parse_file("examples/if_else_stmt.lox", false);
-    }
-
-    #[test]
-    fn can_parse_logical_and() {
-        assert_can_parse_file("examples/logic_and.lox", false);
-    }
-
-    #[test]
-    fn can_parse_logical_or() {
-        assert_can_parse_file("examples/logic_or.lox", false);
-    }
-
-    #[test]
-    fn can_parse_while_statements() {
-        assert_can_parse_file("examples/while_stmt.lox", false);
-    }
-
-    #[test]
-    fn can_parse_for_statements() {
-        assert_can_parse_file("examples/for_stmt.lox", false);
-    }
-
-    #[test]
-    fn can_parse_call_expressions() {
-        assert_can_parse_file("examples/call_stmt.lox", false);
     }
 }

@@ -10,7 +10,7 @@ use crate::lox_value::LoxValue;
 use crate::token_type::TokenType;
 
 use self::environment::Environment;
-use self::error::RuntimeError;
+use self::error::{RuntimeError, RuntimeResult};
 
 #[derive(Debug)]
 pub struct Interpreter {
@@ -23,7 +23,7 @@ impl Interpreter {
 
         environment.values.insert(
             "clock".to_string(),
-            LoxValue::Function(Function::new_native("clock".to_string(), 0, globals::clock)),
+            LoxValue::Function(Function::new_native_fun("clock".to_string(), 0, globals::clock)),
         );
         Interpreter {
             environment: Box::new(environment),
@@ -38,20 +38,20 @@ impl Interpreter {
 
         match expr {
             Value {value, position:_ } => Ok(value.to_owned()),
-            Grouping(inner_expr, position) => self.evaluate(inner_expr),
-            &Expr::Identifier(name, position) => {
+            Grouping(inner_expr, _position) => self.evaluate(inner_expr),
+            Expr::Identifier(name, position) => {
                 let value = self.environment.get(&name);
 
                 if value.is_some() {
                     Ok(value.unwrap().to_owned())
                 } else {
                     Err(RuntimeError::VarDoesNotExist {
-                        name,
-                        position,
+                        name: name.to_owned(),
+                        position: position.to_owned(),
                     })
                 }
             }
-            &Assignment {
+            Assignment {
                 name,
                 value,
                 position
@@ -59,7 +59,7 @@ impl Interpreter {
                 let previous = self.environment.get(&name);
 
                 if previous.is_none() {
-                    Err(RuntimeError::VarDoesNotExist { name, position })
+                    Err(RuntimeError::VarDoesNotExist { name: name.to_owned(), position: position.to_owned() })
                 } else {
                     let value = self.evaluate(value.as_ref())?;
                     self.environment.assign(name.as_str(), value);
@@ -67,7 +67,7 @@ impl Interpreter {
                     Ok(LoxValue::Nil)
                 }
             }
-            &Unary { op, rhs, position } => match (&op.token_type, self.evaluate(rhs.as_ref())?) {
+            Unary { op, rhs, position:_ } => match (&op.token_type, self.evaluate(rhs.as_ref())?) {
                 (Minus, LoxValue::Number(n)) => Ok(LoxValue::Number(-n)),
                 (Minus, _) => Err(RuntimeError::Generic(
                     "Expected a number.".to_string(),
@@ -85,7 +85,7 @@ impl Interpreter {
                     op.position,
                 )),
             },
-            Binary { lhs, op, rhs, position } => {
+            Binary { lhs, op, rhs, position:_ } => {
                 let (lhs, rhs) = (self.evaluate(lhs)?, self.evaluate(rhs)?);
 
                 match (&op.token_type, lhs, rhs) {
@@ -148,7 +148,7 @@ impl Interpreter {
                 condition,
                 result_1,
                 result_2,
-                postion,
+                postion:_,
             } => {
                 if self.evaluate(condition)?.is_truthy() {
                     self.evaluate(result_1)
@@ -185,7 +185,7 @@ impl Interpreter {
     }
 
     /// Executes a statement.
-    fn execute(&mut self, statement: &Stmt) -> Result<(), RuntimeError> {
+    fn execute(&mut self, statement: &Stmt, in_loop: bool, in_function: bool) -> RuntimeResult<Option<LoxValue>> {
         use Stmt::*;
 
         match statement {
@@ -193,47 +193,96 @@ impl Interpreter {
                 self.evaluate(expr)?;
             }
             PrintStmt(expr) => {
-                println!("Raw: {}", expr);
+                // println!("Raw: {}", expr);
                 println!("{}", self.evaluate(expr)?);
             }
-            Var { name, initializer } => {
+            Var { name, initializer, postion:_ } => {
                 let initializer = self.evaluate(initializer)?;
                 self.environment.define(name, initializer);
             }
-            Block { declarations } => {
+            Block(declarations) => {
                 // TODO This is some of the hackiest stuff I've ever written
                 self.environment = Box::new(Environment::with_enclosing(self.environment.clone()));
-                self.interpret(declarations)?;
+                self.interpret(declarations, in_loop, in_function)?;
                 self.environment = self.environment.enclosing.clone().unwrap();
             }
             IfStmt {
                 condition,
                 true_stmt,
                 false_stmt,
+                position:_,
             } => {
                 if self.evaluate(condition)?.is_truthy() {
-                    self.execute(&true_stmt)?
+                    self.execute(&true_stmt, true, in_function)?;
                 } else if let Some(stmt) = false_stmt {
-                    self.execute(&stmt)?
+                    self.execute(&stmt, true, in_function)?;
                 }
             }
-            WhileStmt { condition, body } => {
+            WhileStmt { condition, body, position:_ } => {
                 while self.evaluate(condition)?.is_truthy() {
-                    self.execute(body)?;
+                    self.execute(body, true, in_function)?;
+                }
+            }
+            BreakStmt(position) => {
+                if in_loop {
+                    return Err(RuntimeError::ValidBreak)
+                } else {
+                    return Err(RuntimeError::InvalidBreak(position.to_owned()))
+                }
+            }
+            ContinueStmt(position) => {
+                if in_loop {
+                    return Err(RuntimeError::ValidContinue)
+                } else {
+                    return Err(RuntimeError::InvalidBreak(position.to_owned()))
+                }
+            }
+            FunStmt { fun_declaration: decl, position:_ } => {
+                self.environment.define(&decl.name, LoxValue::Function(Function::User(decl.to_owned())))
+            }
+            ReturnStmt { expr, position } => {
+                if in_function {
+                    if let Some(value) = expr {
+                        return Ok(Some(self.evaluate(value)?))
+                    } else {
+                        return Err(RuntimeError::InvalidBreak(position.to_owned()))
+                    }
+                } else {
+                    return Err(RuntimeError::InvalidReturn(position.to_owned()))
                 }
             }
         }
 
-        Ok(())
+        Ok(None)
     }
 
     /// Executes statements given.
-    pub fn interpret(&mut self, statements: &Vec<Stmt>) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, statements: &Vec<Stmt>, in_loop: bool, in_function: bool) -> RuntimeResult<Option<LoxValue>> {
+        use RuntimeError::*;
+
         for statement in statements {
-            self.execute(statement)?
+            match self.execute(statement, in_loop, in_function) {
+                Ok(None) => {
+                    continue;
+                },
+                Ok(Some(value)) => { 
+                    return Ok(Some(value))
+                }
+                Err(ValidBreak) => {
+                    println!("About to call 'break': {:?}", self);
+                    return Ok(None)
+                }
+                Err(ValidContinue) => {
+                    println!("About to call 'continue': {:?}", self);
+                    continue;
+                },
+                err => { 
+                    err?;
+                }
+            }
         }
 
-        Ok(())
+        Ok(None)
     }
 }
 

@@ -1,9 +1,10 @@
 use crate::lox_value::LoxValue;
 use crate::token_type::TokenType;
 
-use std::fmt;
+use parse_display::Display;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Display, PartialEq, Eq, Clone, Copy)]
+#[display("line {line}, column {column}")]
 pub struct Position {
     pub line: usize,
     pub column: usize,
@@ -15,14 +16,8 @@ impl Position {
     }
 }
 
-
-impl fmt::Display for Position {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "line {}, column {}", self.line, self.column)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Display, Clone, PartialEq)]
+#[display("<type: {token_type}, literal: {literal:?}, at {position}>")]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: Option<LoxValue>,

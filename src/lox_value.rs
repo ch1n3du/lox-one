@@ -1,14 +1,20 @@
-use std::fmt;
-
 use super::{callable::Callable, function::Function};
 
-#[derive(Debug, Clone, PartialEq)]
+use parse_display::Display;
+
+#[derive(Debug, Display, Clone, PartialEq)]
 pub enum LoxValue {
+    #[display("{0}")]
     Boolean(bool),
+    #[display("{0}")]
     Number(f64),
+    #[display("{0}")]
     String(String),
+    #[display("{0}")]
     Function(Function),
+    #[display("{0}")]
     Identifier(String),
+    #[display("nil")]
     Nil,
 }
 
@@ -30,21 +36,6 @@ impl LoxValue {
         match self {
             Function(fun) => Some(Box::new(fun.to_owned())),
             _ => None,
-        }
-    }
-}
-
-impl fmt::Display for LoxValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use LoxValue::*;
-
-        match self {
-            Boolean(b) => write!(f, "{}", b),
-            Number(n) => write!(f, "{}", n),
-            String(s) => write!(f, "{}", s),
-            Identifier(id) => write!(f, "{}", id),
-            Nil => write!(f, "nil"),
-            Function(fun) => write!(f, "{:?}", fun),
         }
     }
 }

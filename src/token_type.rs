@@ -1,91 +1,98 @@
-use std::fmt;
+use parse_display::Display;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Display, Clone, PartialEq)]
 pub enum TokenType {
     //Single character tokens.
+    #[display("(")]
     LeftParen,
+    #[display(")")]
     RightParen,
+    #[display("{{")]
     LeftBrace,
+    #[display("}}")]
     RightBrace,
+    #[display(",")]
     Comma,
+    #[display(".")]
     Dot,
+    #[display("?")]
     QuestionMark,
+    #[display("-")]
     Minus,
+    #[display("+")]
     Plus,
+    #[display(":")]
     Colon,
+    #[display(";")]
     Semicolon,
+    #[display("/")]
     Slash,
+    #[display("*")]
     Star,
 
     // One or two character tokens.
+    #[display("!")]
     Bang,
+    #[display("!=")]
     BangEqual,
+    #[display("=")]
     Equal,
+    #[display("==")]
     EqualEqual,
+    #[display(">")]
     Greater,
+    #[display(">=")]
     GreaterEqual,
+    #[display("<")]
     Less,
+    #[display("<=")]
     LessEqual,
 
     // Literals
+    #[display("IDENTIFIER")]
     Identifier,
+    #[display("STRING")]
     String,
+    #[display("NUMBER")]
     Number,
 
     // Keywords
+    #[display("AND")]
     And,
+    #[display("OR")]
     Or,
+    #[display("TRUE")]
     True,
+    #[display("FALSE")]
     False,
+    #[display("NIL")]
     Nil,
+    #[display("IF")]
     If,
+    #[display("ELSE")]
     Else,
+    #[display("WHILE")]
     While,
+    #[display("FOR")]
     For,
+    #[display("BREAK")]
+    Break,
+    #[display("CONTINUE")]
+    Continue,
+    #[display("FUN")]
     Fun,
+    #[display("CLASS")]
     Class,
+    #[display("RETURN")]
     Return,
+    #[display("PRINT")]
     Print,
+    #[display("SUPER")]
     Super,
+    #[display("THIS")]
     This,
+    #[display("VAR")]
     Var,
-
+    #[display("EOF")]
     Eof,
-}
-
-impl fmt::Display for TokenType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use TokenType::*;
-
-        match self {
-            Bang => write!(f, "!"),
-            BangEqual => write!(f, "!"),
-            Equal => write!(f, "="),
-            EqualEqual => write!(f, "=="),
-            Less => write!(f, "<"),
-            LessEqual => write!(f, "<="),
-            Greater => write!(f, ">"),
-            GreaterEqual => write!(f, ">="),
-            LeftBrace => write!(f, "{{"),
-            RightBrace => write!(f, "}}"),
-            LeftParen => write!(f, "("),
-            RightParen => write!(f, ")"),
-            And => write!(f, "and"),
-            Or => write!(f, "or"),
-            Plus => write!(f, "+"),
-            Minus => write!(f, "-"),
-            Star => write!(f, "*"),
-            Slash => write!(f, "/"),
-            Dot => write!(f, "."),
-            QuestionMark => write!(f, "?"),
-            Colon => write!(f, ":"),
-            Semicolon => write!(f, ";"),
-            Number => write!(f, "NUMBER"),
-            String => write!(f, "STRING"),
-            True => write!(f, "true"),
-            False => write!(f, "false"),
-            Identifier => write!(f, "IDENTIFIER"),
-            _ => write!(f, ""),
-        }
-    }
 }

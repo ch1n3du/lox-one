@@ -20,7 +20,7 @@
             println!("Interpreter:\n{:?}", interpreter);
         }
 
-        interpreter.interpret(&statements).unwrap();
+        interpreter.interpret(&statements, false, false).unwrap();
 
         interpreter
     }
@@ -128,6 +128,16 @@
             false,
         );
     }
+
+    #[test]
+    fn executes_continue_statements() {
+        assert_execution_of_file(
+            "Errors executing While statements",
+            "examples/continue.lox",
+            false,
+        );
+    }
+
     #[test]
     fn executes_call_statements() {
         assert_execution_of_file(

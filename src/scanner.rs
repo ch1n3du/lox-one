@@ -40,6 +40,8 @@ impl Scanner {
                 ("super", TokenType::Super),
                 ("this", TokenType::This),
                 ("var", TokenType::Var),
+                ("break", TokenType::Break),
+                ("continue", TokenType::Continue),
             ]),
         }
     }
@@ -255,7 +257,10 @@ impl Scanner {
             b if b.is_ascii_digit() => self.scan_number(),
             b if b.is_ascii_alphanumeric() => self.scan_identifier(),
 
-            b'\n' => self.line += 1,
+            b'\n' => { 
+                self.line += 1;
+                self.column = 1;
+            }
             b' ' | b'\r' | b'\t' => (),
             _ => println!("Invalid character {}", self.line),
         }

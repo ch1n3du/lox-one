@@ -7,14 +7,12 @@ use std::fmt::{self, Debug};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
+    Identifier(String, Position),
     Value {
         value: LoxValue,
         position: Position,
     },
-    Grouping {
-        expr: Box<Expr>,
-        position: Position,
-    },
+    Grouping(Box<Expr>, Position),
     Unary {
         op: Token,
         rhs: Box<Expr>,
@@ -31,10 +29,6 @@ pub enum Expr {
         result_1: Box<Expr>,
         result_2: Box<Expr>,
         postion: Position,
-    },
-    Identifier {
-        name: String,
-        position: Position,
     },
     Assignment {
         name: String,
@@ -53,31 +47,31 @@ impl fmt::Display for Expr {
         use Expr::*;
 
         match self {
-            Value { value, position } => write!(f, "{}", value),
-            Grouping { expr, position } => write!(f, "(grouping {})", expr),
-            Unary { op, rhs, position } => write!(f, "({} {})", op.token_type, rhs),
+            Value { value, position:_ } => write!(f, "{}", value),
+            Grouping (expr, _position ) => write!(f, "({})", expr),
+            Unary { op, rhs, position:_ } => write!(f, "{} {}", op.token_type, rhs),
             Binary {
                 lhs,
                 op,
                 rhs,
-                position,
-            } => write!(f, "({} {} {})", lhs, op.token_type, rhs),
+                position:_,
+            } => write!(f, "{} {} {}", lhs, op.token_type, rhs),
             Ternary {
                 condition,
                 result_1,
                 result_2,
-                postion,
-            } => write!(f, "(ternary {} ? {} : {})", condition, result_1, result_2),
-            Identifier { name, position } => write!(f, "{}", name),
+                postion:_,
+            } => write!(f, "{} ? {} : {}", condition, result_1, result_2),
+            Identifier (name, _position ) => write!(f, "{}", name),
             Assignment {
                 name,
                 value,
-                position,
+                position:_,
             } => write!(f, "{} = {}", name, value),
             Call {
                 callee,
                 arguments,
-                postion,
+                postion:_,
             } => {
                 let args = if arguments.len() == 0 {
                     String::new()
@@ -97,23 +91,14 @@ impl fmt::Display for Expr {
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
-    PrintStmt {
-        expr: Expr,
-        position: Position,
-    },
-    ExprStmt {
-        expr: Expr,
-        position: Position,
-    },
+    PrintStmt(Expr),
+    ExprStmt(Expr),
     Var {
         name: String,
         initializer: Expr,
         postion: Position,
     },
-    Block {
-        declarations: Vec<Stmt>,
-        position: Position,
-    },
+    Block(Vec<Stmt>),
     IfStmt {
         condition: Expr,
         true_stmt: Box<Stmt>,
@@ -142,17 +127,14 @@ impl fmt::Display for Stmt {
         use Stmt::*;
 
         match self {
-            PrintStmt { expr, position: _ } => write!(f, "print {};", expr),
-            ExprStmt { expr, position: _ } => write!(f, "{};", expr),
+            PrintStmt ( expr ) => write!(f, "print {};", expr),
+            ExprStmt(expr) => write!(f, "{};", expr),
             Var {
                 name,
                 initializer,
-                postion,
+                postion:_,
             } => write!(f, "var {} = {}", name, initializer),
-            Block {
-                declarations,
-                position,
-            } => {
+            Block(declarations) => {
                 let repr = declarations.iter().fold(String::from("{\n"), |acc, stmt| {
                     format!("{}    {}\n", acc, stmt)
                 });
@@ -163,7 +145,7 @@ impl fmt::Display for Stmt {
                 condition,
                 true_stmt,
                 false_stmt,
-                position,
+                position:_,
             } => match false_stmt {
                 None => write!(f, "if ({}) {}", condition, true_stmt,),
                 Some(stmt) => write!(f, "if ({}) {} else {}", condition, true_stmt, stmt),
@@ -171,13 +153,13 @@ impl fmt::Display for Stmt {
             WhileStmt {
                 condition,
                 body,
-                position,
+                position:_,
             } => write!(f, "while ({}) {}", condition, body),
-            BreakStmt(position) => write!(f, "break ;"),
-            ContinueStmt(position) => write!(f, "continue ;"),
+            BreakStmt(_position) => write!(f, "break ;"),
+            ContinueStmt(_position) => write!(f, "continue ;"),
             FunStmt {
                 fun_declaration: FunDecl { name, params, body },
-                position,
+                position:_,
             } => {
                 let params_repr = if params.len() == 0 {
                     String::new()
@@ -189,7 +171,7 @@ impl fmt::Display for Stmt {
 
                 write!(f, "fun {}({}) {}", name, params_repr, body)
             }
-            ReturnStmt { expr, position } => {
+            ReturnStmt { expr, position:_ } => {
                 if let Some(expr) = expr {
                     write!(f, "return {};", expr)
                 } else {

@@ -1,7 +1,7 @@
 use crate::interpreter::Interpreter;
 use crate::lox_value::LoxValue;
 
-use crate::interpreter::runtime_error::RuntimeError;
+use crate::interpreter::error::RuntimeResult;
 
 pub trait Callable {
     fn name(&self) -> String;
@@ -10,5 +10,5 @@ pub trait Callable {
         &self,
         interpreter: &mut Interpreter,
         args: &[LoxValue],
-    ) -> Result<LoxValue, RuntimeError>;
+    ) -> RuntimeResult<LoxValue>;
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::lox_value::LoxValue;
-use crate::token::{Token, Position};
+use crate::token::{Position, Token};
 use crate::token_type::TokenType;
 
 pub struct Scanner {
@@ -194,10 +194,7 @@ impl Scanner {
                 _ => self.add_token(token_type),
             }
         } else {
-            self.add_token_with_literal(
-                TokenType::Identifier,
-                Some(LoxValue::Identifier(literal)),
-            )
+            self.add_token_with_literal(TokenType::Identifier, Some(LoxValue::Identifier(literal)))
         }
     }
 
@@ -257,7 +254,7 @@ impl Scanner {
             b if b.is_ascii_digit() => self.scan_number(),
             b if b.is_ascii_alphanumeric() => self.scan_identifier(),
 
-            b'\n' => { 
+            b'\n' => {
                 self.line += 1;
                 self.column = 1;
             }

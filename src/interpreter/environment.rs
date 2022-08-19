@@ -29,9 +29,9 @@ impl Environment {
         }
     }
 
-    pub fn with_enclosing(enclosing: Box<Environment>) -> Environment {
+    pub fn with_enclosing(enclosing: &Environment) -> Environment {
         Environment {
-            enclosing: Some(enclosing),
+            enclosing: Some(Box::new(enclosing.to_owned())),
             values: HashMap::new(),
         }
     }

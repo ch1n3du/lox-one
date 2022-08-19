@@ -1,4 +1,4 @@
-use crate::token::{Token, Position};
+use crate::token::{Position, Token};
 use crate::token_type::TokenType;
 
 use thiserror::Error;
@@ -10,7 +10,7 @@ pub enum ParserError {
     #[error("Expected closing brace, {0}.")]
     ExpectedClosingBrace(Position),
     #[error("Unexpected token {0}, {1}.")]
-    UnexpectedToken (Token, Position),
+    UnexpectedToken(Token, Position),
     #[error("Expected one of {0:?}, {1}")]
     ExpectedOneOf(Vec<TokenType>, Position),
     #[error("Arguments exceeded limit of 250, {0}")]

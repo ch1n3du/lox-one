@@ -1,7 +1,8 @@
 var i = 0;
+
 while (i < 8) {
     if (i == 2) {
-        break;
+        continue;
     }
     i = i + 1;
     print i;

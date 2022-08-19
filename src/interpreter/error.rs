@@ -9,15 +9,9 @@ pub enum RuntimeError {
     #[error("Division by zero error, {0}.")]
     DivisionByZero(Position),
     #[error("Variable '{name}' isn't declared, {position}.")]
-    VarDoesNotExist {
-        name: String,
-        position: Position,
-    },
+    VarDoesNotExist { name: String, position: Position },
     #[error("Incorrect number of arguments in function '{name}', on line {position}")]
-    IncorrectArity {
-        name: String,
-        position: Position,
-    },
+    IncorrectArity { name: String, position: Position },
     #[error("Type '{type_name}' is not callable, on line {position}.")]
     NotCallable {
         type_name: LoxValue,

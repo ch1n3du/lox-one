@@ -6,9 +6,5 @@ use crate::interpreter::error::RuntimeResult;
 pub trait Callable {
     fn name(&self) -> String;
     fn arity(&self) -> usize;
-    fn call(
-        &self,
-        interpreter: &mut Interpreter,
-        args: &[LoxValue],
-    ) -> RuntimeResult<LoxValue>;
+    fn call(&self, interpreter: &mut Interpreter, args: &[LoxValue]) -> RuntimeResult<LoxValue>;
 }

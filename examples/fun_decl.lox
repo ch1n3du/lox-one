@@ -1,0 +1,6 @@
+fun add(a, b) {
+    var x = a + b;
+    return x;
+}
+
+// print add(23, 4);

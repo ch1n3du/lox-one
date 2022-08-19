@@ -1,7 +1,8 @@
 use crate::{
+    ast::Stmt,
     callable::Callable,
-    interpreter::{error::RuntimeResult, Interpreter},
-    lox_value::LoxValue, ast::Stmt,
+    interpreter::{environment::Environment, error::RuntimeResult, Interpreter},
+    lox_value::LoxValue,
 };
 
 use std::fmt;
@@ -9,11 +10,11 @@ use std::fmt;
 use parse_display::Display;
 
 #[derive(Debug, Display, Clone)]
-#[display("Function Declaration:\n    Name: {name}\n    Params: {params:?}\n    Body: {body}")]
+#[display("Function Declaration:\n    Name: {name}\n    Params: {params:?}\n    Body: {body:?}")]
 pub struct FunDecl {
     pub name: String,
-    pub params: Vec<LoxValue>,
-    pub body: Box<Stmt>,
+    pub params: Vec<String>,
+    pub body: Vec<Stmt>,
 }
 
 #[derive(Display, Clone)]
@@ -25,7 +26,7 @@ pub enum Function {
         callable: fn(&mut Interpreter, &[LoxValue]) -> RuntimeResult<LoxValue>,
     },
     #[display("User Function:\n{0}")]
-    User(FunDecl)
+    User(FunDecl),
 }
 
 impl PartialEq for Function {
@@ -62,12 +63,10 @@ impl Callable for Function {
         match self {
             Native {
                 name,
-                arity:_,
-                callable:_,
+                arity: _,
+                callable: _,
             } => name.to_owned(),
-            User(decl) => { 
-                decl.name.to_owned()
-            }
+            User(decl) => decl.name.to_owned(),
         }
     }
 
@@ -76,30 +75,33 @@ impl Callable for Function {
 
         match self {
             Native {
-                name:_,
+                name: _,
                 arity,
-                callable:_,
+                callable: _,
             } => arity.to_owned(),
-            User(decl) => {
-                decl.params.len()
-            }
+            User(decl) => decl.params.len(),
         }
     }
 
-    fn call(
-        &self,
-        interpreter: &mut Interpreter,
-        args: &[LoxValue],
-    ) -> RuntimeResult<LoxValue> {
+    fn call(&self, interpreter: &mut Interpreter, args: &[LoxValue]) -> RuntimeResult<LoxValue> {
         use Function::*;
 
         match self {
             Native {
-                name:_,
-                arity:_,
+                name: _,
+                arity: _,
                 callable,
             } => callable(interpreter, args),
             User(decl) => {
+                let params_and_args: Vec<(String, LoxValue)> = decl
+                    .params
+                    .clone()
+                    .into_iter()
+                    .zip(args.into_iter().cloned())
+                    .collect();
+                let env = Environment::from(params_and_args);
+
+                interpreter.execute_block(&decl.body, env, false, true)?;
                 todo!()
             }
         }
@@ -110,7 +112,11 @@ impl fmt::Debug for Function {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Function::*;
         match self {
-            Native { name, arity:_, callable:_ } => {
+            Native {
+                name,
+                arity: _,
+                callable: _,
+            } => {
                 write!(f, "<native fun {name}>")
             }
             User(decl) => {

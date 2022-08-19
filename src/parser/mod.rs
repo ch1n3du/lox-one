@@ -7,7 +7,8 @@ pub mod error;
 #[cfg(test)]
 mod tests;
 
-use crate::token::{Token, Position};
+use crate::function::FunDecl;
+use crate::token::{Position, Token};
 use crate::token_type::TokenType;
 
 use crate::ast::{Expr, Stmt};
@@ -154,7 +155,10 @@ impl Parser {
             TokenType::True,
             TokenType::Nil,
         ]) {
-            return Ok(Expr::Value{ value: self.previous().unwrap().literal.unwrap(), position: self.position() });
+            return Ok(Expr::Value {
+                value: self.previous().unwrap().literal.unwrap(),
+                position: self.position(),
+            });
         }
 
         if self.matches(vec![TokenType::LeftParen]) {
@@ -171,15 +175,16 @@ impl Parser {
                 _ => {
                     return Err(ParserError::ExpectedOneOf(
                         vec![TokenType::Identifier],
-                        self.position()
+                        self.position(),
                     ))
                 }
             }
         } else {
-            println!(
-                "Invalid Token in primary rule: '{:?}'",
-                self.peek().unwrap()
-            );
+            println!("Error at {}", self.current);
+            // println!(
+            //     "Invalid Token in primary rule: '{:?}'",
+            //     self.peek().unwrap()
+            // );
             Err(ParserError::ExpectedOneOf(
                 vec![
                     TokenType::Number,
@@ -188,7 +193,7 @@ impl Parser {
                     TokenType::True,
                     TokenType::False,
                 ],
-                self.position()
+                self.position(),
             ))
         }
     }
@@ -230,6 +235,8 @@ impl Parser {
                     };
                     self.consume(TokenType::RightParen)?;
                 }
+                //TODO Remove
+                println!("Finished with call {:?}", expr);
             } else {
                 break;
             }
@@ -413,7 +420,7 @@ impl Parser {
         let expr = self.logical_or()?;
 
         match &expr {
-            Expr::Identifier( name, _position) => {
+            Expr::Identifier(name, _position) => {
                 if self.matches(vec![TokenType::Equal]) {
                     let value = Box::new(self.assignment()?);
 
@@ -481,7 +488,7 @@ impl Parser {
             condition,
             true_stmt,
             false_stmt,
-            position: self.position()
+            position: self.position(),
         })
     }
 
@@ -493,7 +500,11 @@ impl Parser {
 
         let body = Box::new(self.statement()?);
 
-        Ok(Stmt::WhileStmt { condition, body, position: self.position() })
+        Ok(Stmt::WhileStmt {
+            condition,
+            body,
+            position: self.position(),
+        })
     }
 
     /// forStmt -> "for" "(" ( varDecl | exprStmt | ";")
@@ -538,15 +549,16 @@ impl Parser {
 
         // Parse for loop
         let condition = if condition.is_none() {
-            Expr::Value{ value: LoxValue::Boolean(true), position: self.position() }
+            Expr::Value {
+                value: LoxValue::Boolean(true),
+                position: self.position(),
+            }
         } else {
             condition.unwrap()
         };
 
         let while_body: Stmt = if let Some(increment) = increment {
-            Stmt::Block(
-                vec![self.statement()?, Stmt::ExprStmt(increment)]
-            )
+            Stmt::Block(vec![self.statement()?, Stmt::ExprStmt(increment)])
         } else {
             Stmt::Block(vec![self.statement()?])
         };
@@ -577,12 +589,17 @@ impl Parser {
     /// returnStmt  -> "return" expression? ";" ;
     fn return_statement(&mut self) -> ParserResult<Stmt> {
         let position = self.position();
-        self.consume(TokenType::Semicolon)?;
+        println!("Next Token in return {:?}", self.peek().unwrap());
 
         if self.matches(vec![TokenType::Semicolon]) {
-            Ok(Stmt::ReturnStmt { expr: None, position })
+            Ok(Stmt::ReturnStmt {
+                expr: None,
+                position,
+            })
         } else {
+            println!("No expresssion");
             let expr = Some(self.expression()?);
+            self.consume(TokenType::Semicolon)?;
             Ok(Stmt::ReturnStmt { expr, position })
         }
     }
@@ -594,7 +611,7 @@ impl Parser {
     ///           |  whileStmt
     ///           |  forStmt   
     ///           |  breakStmt
-    ///           |  continueStmt 
+    ///           |  continueStmt
     ///           |  returntmt     ;
     pub fn statement(&mut self) -> ParserResult<Stmt> {
         let stmt = if self.matches(vec![TokenType::Print]) {
@@ -637,19 +654,80 @@ impl Parser {
         let initializer = if self.matches(vec![TokenType::Equal]) {
             self.expression()?
         } else {
-            Expr::Value{ value: LoxValue::Nil, position: self.position() }
+            Expr::Value {
+                value: LoxValue::Nil,
+                position: self.position(),
+            }
         };
 
         self.consume(TokenType::Semicolon)?;
 
-        Ok(Stmt::Var { name, initializer , postion: self.position() })
+        Ok(Stmt::Var {
+            name,
+            initializer,
+            postion: self.position(),
+        })
+    }
+
+    /// IDENTIFIER "(" arguments? ")" block ;
+    fn function(&mut self) -> ParserResult<Stmt> {
+        let name = if let LoxValue::Identifier(ident) = self.advance().unwrap().literal.unwrap() {
+            ident
+        } else {
+            return Err(ParserError::ExpectedOneOf(
+                vec![TokenType::Identifier],
+                self.previous().unwrap().position,
+            ));
+        };
+
+        self.consume(TokenType::LeftParen)?;
+
+        let mut params: Vec<String> = Vec::new();
+        if !self.matches(vec![TokenType::RightParen]) {
+            for arg in self.arguments()? {
+                match arg {
+                    Expr::Identifier(ident, _position) => params.push(ident),
+                    _ => {
+                        return Err(ParserError::ExpectedOneOf(
+                            vec![TokenType::Identifier],
+                            self.position(),
+                        ))
+                    }
+                }
+            }
+            self.consume(TokenType::RightParen)?;
+        }
+
+        // println!("{:?}", params);
+        // println!("Next Token {:?}", self.peek().unwrap());
+
+        let body = if let Stmt::Block(declarations) = self.block()? {
+            declarations
+        } else {
+            panic!("Should be impossible to not get block")
+        };
+
+        let fun_declaration = FunDecl { name, params, body };
+
+        Ok(Stmt::FunStmt {
+            fun_declaration,
+            position: self.position(),
+        })
+    }
+
+    /// "fun" function ;
+    fn fun_declaration(&mut self) -> ParserResult<Stmt> {
+        self.function()
     }
 
     /// declaration -> varDeclaration
+    ///              | funDeclaration
     ///              | statement      ;
     fn declaration(&mut self) -> ParserResult<Stmt> {
         if self.matches(vec![TokenType::Var]) {
             self.var_declaration()
+        } else if self.matches(vec![TokenType::Fun]) {
+            self.fun_declaration()
         } else {
             self.statement()
         }

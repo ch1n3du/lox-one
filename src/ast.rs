@@ -47,31 +47,35 @@ impl fmt::Display for Expr {
         use Expr::*;
 
         match self {
-            Value { value, position:_ } => write!(f, "{}", value),
-            Grouping (expr, _position ) => write!(f, "({})", expr),
-            Unary { op, rhs, position:_ } => write!(f, "{} {}", op.token_type, rhs),
+            Value { value, position: _ } => write!(f, "{}", value),
+            Grouping(expr, _position) => write!(f, "({})", expr),
+            Unary {
+                op,
+                rhs,
+                position: _,
+            } => write!(f, "{} {}", op.token_type, rhs),
             Binary {
                 lhs,
                 op,
                 rhs,
-                position:_,
+                position: _,
             } => write!(f, "{} {} {}", lhs, op.token_type, rhs),
             Ternary {
                 condition,
                 result_1,
                 result_2,
-                postion:_,
+                postion: _,
             } => write!(f, "{} ? {} : {}", condition, result_1, result_2),
-            Identifier (name, _position ) => write!(f, "{}", name),
+            Identifier(name, _position) => write!(f, "{}", name),
             Assignment {
                 name,
                 value,
-                position:_,
+                position: _,
             } => write!(f, "{} = {}", name, value),
             Call {
                 callee,
                 arguments,
-                postion:_,
+                postion: _,
             } => {
                 let args = if arguments.len() == 0 {
                     String::new()
@@ -127,12 +131,12 @@ impl fmt::Display for Stmt {
         use Stmt::*;
 
         match self {
-            PrintStmt ( expr ) => write!(f, "print {};", expr),
+            PrintStmt(expr) => write!(f, "print {};", expr),
             ExprStmt(expr) => write!(f, "{};", expr),
             Var {
                 name,
                 initializer,
-                postion:_,
+                postion: _,
             } => write!(f, "var {} = {}", name, initializer),
             Block(declarations) => {
                 let repr = declarations.iter().fold(String::from("{\n"), |acc, stmt| {
@@ -145,7 +149,7 @@ impl fmt::Display for Stmt {
                 condition,
                 true_stmt,
                 false_stmt,
-                position:_,
+                position: _,
             } => match false_stmt {
                 None => write!(f, "if ({}) {}", condition, true_stmt,),
                 Some(stmt) => write!(f, "if ({}) {} else {}", condition, true_stmt, stmt),
@@ -153,13 +157,13 @@ impl fmt::Display for Stmt {
             WhileStmt {
                 condition,
                 body,
-                position:_,
+                position: _,
             } => write!(f, "while ({}) {}", condition, body),
             BreakStmt(_position) => write!(f, "break ;"),
             ContinueStmt(_position) => write!(f, "continue ;"),
             FunStmt {
                 fun_declaration: FunDecl { name, params, body },
-                position:_,
+                position: _,
             } => {
                 let params_repr = if params.len() == 0 {
                     String::new()
@@ -169,9 +173,9 @@ impl fmt::Display for Stmt {
                     })
                 };
 
-                write!(f, "fun {}({}) {}", name, params_repr, body)
+                write!(f, "fun {}({}) {:?}", name, params_repr, body)
             }
-            ReturnStmt { expr, position:_ } => {
+            ReturnStmt { expr, position: _ } => {
                 if let Some(expr) = expr {
                     write!(f, "return {};", expr)
                 } else {

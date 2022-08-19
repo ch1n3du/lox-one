@@ -17,12 +17,12 @@ fn assert_can_parse(title: &str, src: &str, verbose: bool) -> (Vec<Stmt>, Vec<Pa
         log_items(format!("Errors parsing {}", title).as_str(), &errors)
     }
 
-    if verbose {
-        log_items(
-            format!("Statements from  parsing {}", title).as_str(),
-            &statements,
-        )
-    }
+    // if verbose {
+    //     log_items(
+    //         format!("Statements from  parsing {}", title).as_str(),
+    //         &statements,
+    //     )
+    // }
 
     (statements, errors)
 }
@@ -90,7 +90,7 @@ fn can_parse_for_statements() {
 
 #[test]
 fn can_parse_continue_statements() {
-    assert_can_parse_file("examples/continue.lox", true);
+    assert_can_parse_file("examples/continue.lox", false);
 }
 
 #[test]
@@ -100,5 +100,5 @@ fn can_parse_call_expressions() {
 
 #[test]
 fn can_parse_fun_declaration() {
-    assert_can_parse_file("examples/fun_decl.lox", true);
+    assert_can_parse_file("examples/fun_decl.lox", false);
 }

@@ -589,7 +589,6 @@ impl Parser {
     /// returnStmt  -> "return" expression? ";" ;
     fn return_statement(&mut self) -> ParserResult<Stmt> {
         let position = self.position();
-        println!("Next Token in return {:?}", self.peek().unwrap());
 
         if self.matches(vec![TokenType::Semicolon]) {
             Ok(Stmt::ReturnStmt {
@@ -597,7 +596,6 @@ impl Parser {
                 position,
             })
         } else {
-            println!("No expresssion");
             let expr = Some(self.expression()?);
             self.consume(TokenType::Semicolon)?;
             Ok(Stmt::ReturnStmt { expr, position })
@@ -699,7 +697,8 @@ impl Parser {
         }
 
         // println!("{:?}", params);
-        // println!("Next Token {:?}", self.peek().unwrap());
+        println!("Next Token {:?}", self.peek().unwrap());
+        self.consume(TokenType::LeftBrace)?;
 
         let body = if let Stmt::Block(declarations) = self.block()? {
             declarations

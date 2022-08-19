@@ -3,4 +3,6 @@ fun add(a, b) {
     return x;
 }
 
+print add(1, 2);
+
 // print add(23, 4);

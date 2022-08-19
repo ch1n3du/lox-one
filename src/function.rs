@@ -101,8 +101,13 @@ impl Callable for Function {
                     .collect();
                 let env = Environment::from(params_and_args);
 
-                interpreter.execute_block(&decl.body, env, false, true)?;
-                todo!()
+                let res =  interpreter.execute_block(&decl.body, env, false, true)?;
+
+                if let Some(value) = res {
+                    Ok(value)
+                } else {
+                    Ok(LoxValue::Nil)
+                }
             }
         }
     }

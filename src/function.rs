@@ -10,7 +10,7 @@ use std::fmt;
 use parse_display::Display;
 
 #[derive(Debug, Display, Clone)]
-#[display("Function Declaration:\n    Name: {name}\n    Params: {params:?}\n    Body: {body:?}")]
+#[display("<fun {name}>")]
 pub struct FunDecl {
     pub name: String,
     pub params: Vec<String>,
@@ -19,7 +19,7 @@ pub struct FunDecl {
 
 #[derive(Display, Clone)]
 pub enum Function {
-    #[display("<native fun {name}>")]
+    #[display("<native fun {}>")]
     Native {
         name: String,
         arity: usize,
@@ -101,7 +101,7 @@ impl Callable for Function {
                     .collect();
                 let env = Environment::from(params_and_args);
 
-                let res =  interpreter.execute_block(&decl.body, env, false, true)?;
+                let res = interpreter.execute_block(&decl.body, env, false, true)?;
 
                 if let Some(value) = res {
                     Ok(value)

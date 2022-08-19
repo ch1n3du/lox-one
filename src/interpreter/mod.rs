@@ -102,6 +102,11 @@ impl Interpreter {
             } => {
                 let (lhs, rhs) = (self.evaluate(lhs)?, self.evaluate(rhs)?);
 
+                // println!(
+                //     "Evaluating binary expression: \nLHS: {}\nOP: {}\nRHS: {}",
+                //     &lhs, &op, rhs,
+                // );
+
                 match (&op.token_type, lhs, rhs) {
                     // Arithmetic Operators
                     (Plus, LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Number(l + r)),
@@ -148,8 +153,8 @@ impl Interpreter {
                     (Plus, LoxValue::String(s1), LoxValue::String(s2)) => {
                         Ok(LoxValue::String(s1 + s2.as_str()))
                     }
-                    _ => Err(RuntimeError::Generic(
-                        "Don't really know".to_string(),
+                    (_op, _lhs, _rhs) => Err(RuntimeError::Generic(
+                        format!("Don't really know: LHS: {} OP: {} RHS: {}", _lhs, _op, _rhs),
                         op.position,
                     )),
                 }

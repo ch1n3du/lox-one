@@ -175,7 +175,7 @@ impl Scanner {
     }
 
     fn scan_identifier(&mut self) {
-        while !self.is_at_end() && self.peek().is_ascii_alphanumeric() {
+        while !self.is_at_end() && is_valid_ident_char(self.peek()) {
             self.advance();
         }
 
@@ -252,7 +252,7 @@ impl Scanner {
             b'/' => self.scan_comment(),
             b'"' => self.scan_string(),
             b if b.is_ascii_digit() => self.scan_number(),
-            b if b.is_ascii_alphanumeric() => self.scan_identifier(),
+            b if is_valid_ident_char(b) => self.scan_identifier(),
 
             b'\n' => {
                 self.line += 1;
@@ -307,6 +307,10 @@ impl Scanner {
         scanner.scan_tokens();
         scanner.tokens
     }
+}
+
+fn is_valid_ident_char(c: u8) -> bool {
+    c.is_ascii_alphanumeric() || c == b'_'
 }
 
 #[cfg(test)]

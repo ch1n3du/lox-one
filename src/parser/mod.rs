@@ -181,6 +181,7 @@ impl Parser {
             }
         } else {
             println!("Error at {}", self.current);
+            // TODO Fix
             // println!(
             //     "Invalid Token in primary rule: '{:?}'",
             //     self.peek().unwrap()
@@ -235,8 +236,6 @@ impl Parser {
                     };
                     self.consume(TokenType::RightParen)?;
                 }
-                //TODO Remove
-                println!("Finished with call {:?}", expr);
             } else {
                 break;
             }
@@ -696,8 +695,6 @@ impl Parser {
             self.consume(TokenType::RightParen)?;
         }
 
-        // println!("{:?}", params);
-        println!("Next Token {:?}", self.peek().unwrap());
         self.consume(TokenType::LeftBrace)?;
 
         let body = if let Stmt::Block(declarations) = self.block()? {

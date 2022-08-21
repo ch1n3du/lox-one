@@ -4,6 +4,6 @@ while (i < 8) {
     if (i == 2) {
         continue;
     }
-    i = i + 1;
     print i;
+    i = i + 1;
 }

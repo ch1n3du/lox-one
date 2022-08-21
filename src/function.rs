@@ -17,15 +17,17 @@ pub struct FunDecl {
     pub body: Vec<Stmt>,
 }
 
+pub type NativeFunction = fn(&mut Interpreter, &[LoxValue]) -> RuntimeResult<LoxValue>;
+
 #[derive(Display, Clone)]
 pub enum Function {
     #[display("<native fun {}>")]
     Native {
         name: String,
         arity: usize,
-        callable: fn(&mut Interpreter, &[LoxValue]) -> RuntimeResult<LoxValue>,
+        callable: NativeFunction,
     },
-    #[display("User Function:\n{0}")]
+    #[display("{0}")]
     User(FunDecl),
 }
 

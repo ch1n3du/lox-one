@@ -1,3 +1,5 @@
+use crate::token_type::TokenType;
+
 use super::{callable::Callable, function::Function};
 
 use parse_display::Display;
@@ -27,6 +29,26 @@ impl LoxValue {
             Boolean(b) => b.to_owned(),
             Nil => false,
             _ => true,
+        }
+    }
+
+    pub fn is_nil(&self) -> bool {
+        match self {
+            Self::Nil => true,
+            _ => false,
+        }
+    }
+
+    pub fn get_token_type(&self) -> TokenType {
+        use LoxValue::*;
+        match self {
+            Number(_) => TokenType::Number,
+            String(_) => TokenType::String,
+            Boolean(true) => TokenType::True,
+            Boolean(false) => TokenType::False,
+            Function(_) => TokenType::Fun,
+            Identifier(_) => TokenType::Identifier,
+            Nil => TokenType::Nil,
         }
     }
 

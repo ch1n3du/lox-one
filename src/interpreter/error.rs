@@ -27,6 +27,8 @@ pub enum RuntimeError {
     InvalidBreak(Position),
     #[error("'return' can only be used within blocks, {0}.")]
     InvalidReturn(Position),
+    #[error("var '{0}' is being used in it's initializer, {1}.")]
+    VarUsedInOwnInitializer(String, Position),
 }
 
 pub type RuntimeResult<T> = Result<T, RuntimeError>;

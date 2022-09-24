@@ -13,15 +13,10 @@ fun how_deep_that_stack_go(n) {
 
 // how_deep_that_stack_go(1);
 
-fun mk_add() {
-    fun add(a, b) {
-        return a + b;
-    }
-
-    return add;
-} 
-
-var adder = mk_add();
-print adder;
-
-print adder(2, 3);
+// fun fib(n) {
+//     if n < 2 {
+//         return 1
+//     } else {
+//         return fib(n-1) + fib(n-2);
+//     }
+// }

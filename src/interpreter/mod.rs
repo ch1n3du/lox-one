@@ -1,6 +1,8 @@
 pub mod environment;
 pub mod error;
+
 mod globals;
+mod resolver;
 #[cfg(test)]
 mod tests;
 
@@ -33,7 +35,7 @@ impl Interpreter {
     }
 
     /// Evaluates an expression.
-    pub fn evaluate(&mut self, expr: &Expr) -> Result<LoxValue, RuntimeError> {
+    pub fn evaluate(&mut self, expr: &Expr) -> RuntimeResult<LoxValue> {
         use Expr::*;
         use LoxValue::*;
         use TokenType::*;
@@ -42,10 +44,8 @@ impl Interpreter {
             Value { value, position: _ } => Ok(value.to_owned()),
             Grouping(inner_expr, _position) => self.evaluate(inner_expr),
             Expr::Identifier(name, position) => {
-                let value = self.environment.get(&name);
-
-                if value.is_some() {
-                    Ok(value.unwrap().to_owned())
+                if let Some(value) = self.environment.get(&name) {
+                    Ok(value.to_owned())
                 } else {
                     Err(RuntimeError::VarDoesNotExist {
                         name: name.to_owned(),
@@ -214,6 +214,7 @@ impl Interpreter {
         env.enclosing = Some(Box::new(self.environment.clone()));
         self.environment = env;
         let res = self.interpret(declarations, in_loop, in_function);
+        // TODO UNDO
         self.environment = *self.environment.enclosing.clone().unwrap();
 
         res
@@ -336,5 +337,9 @@ impl Interpreter {
         }
 
         Ok(None)
+    }
+
+    fn resolve(&mut self, expr: &Expr, depth: usize) {
+        todo!()
     }
 }

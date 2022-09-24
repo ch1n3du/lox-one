@@ -4,12 +4,10 @@ use std::io::Read;
 use std::fmt::Display;
 
 pub fn read_file(path: &str) -> String {
-    let mut file = File::open(path)
-        .unwrap_or_else(|_| panic!("Error opening file in 'assert_execution_of_file'"));
+    let mut file = File::open(path).expect(&format!("\n\nError opening: {}\n", path));
 
     let mut src = String::new();
-    file.read_to_string(&mut src)
-        .unwrap_or_else(|_| panic!("Error reading file in 'assert_execution_of_file'"));
+    file.read_to_string(&mut src).expect(&format!("\n\nError reading: {}\n", path));
 
     src
 }

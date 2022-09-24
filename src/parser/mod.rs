@@ -18,6 +18,7 @@ use error::ParserError;
 
 use self::error::ParserResult;
 
+#[derive(Debug)]
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
@@ -98,18 +99,27 @@ impl Parser {
     }
 
     /// Consumes a token if it matches token_type else returns.
-    fn consume(&mut self, token_type: TokenType) -> ParserResult<Token> {
+    fn consume(&mut self, token_type: TokenType, msg: &str) -> ParserResult<Token> {
         match (self.check(&token_type), self.advance()) {
             (true, Some(token)) => Ok(token),
             (true, None) => Err(ParserError::Eof(self.position())),
             _ => {
-                println!("Wrong Token Consumeed: {:?}", self.previous().unwrap());
-                Err(ParserError::ExpectedOneOf(
-                    vec![token_type],
-                    self.position(),
-                ))
+                let tok = self.previous().unwrap();
+                // println!(
+                //     "Wrong Token Consumed expected '{}' found '{}'",
+                //     token_type, tok.token_type,
+                // );
+                Err(ParserError::Expected {
+                    msg: msg.to_string(),
+                    found: tok.token_type,
+                    position: self.position(),
+                })
             }
         }
+    }
+
+    fn prev_token_type(&mut self) -> TokenType {
+        self.previous().unwrap().token_type
     }
 
     /// Synchronizes on error.
@@ -163,7 +173,10 @@ impl Parser {
 
         if self.matches(vec![TokenType::LeftParen]) {
             let expr = self.expression()?;
-            self.consume(TokenType::RightParen)?;
+            self.consume(
+                TokenType::RightParen,
+                "Expected accompanying  closing bracket ')'",
+            )?;
 
             return Ok(Expr::Grouping(Box::new(expr), self.position()));
         } else if self.matches(vec![TokenType::Identifier]) {
@@ -172,30 +185,18 @@ impl Parser {
 
             match literal {
                 LoxValue::Identifier(name) => Ok(Expr::Identifier(name, self.position())),
-                _ => {
-                    return Err(ParserError::ExpectedOneOf(
-                        vec![TokenType::Identifier],
-                        self.position(),
-                    ))
-                }
+                _ => Err(ParserError::Expected {
+                    msg: "This should be impossible, check 'primary' parse rule.".to_string(),
+                    found: tok.token_type,
+                    position: self.position(),
+                }),
             }
         } else {
-            println!("Error at {}", self.current);
-            // TODO Fix
-            // println!(
-            //     "Invalid Token in primary rule: '{:?}'",
-            //     self.peek().unwrap()
-            // );
-            Err(ParserError::ExpectedOneOf(
-                vec![
-                    TokenType::Number,
-                    TokenType::String,
-                    TokenType::False,
-                    TokenType::True,
-                    TokenType::False,
-                ],
-                self.position(),
-            ))
+            Err(ParserError::Expected {
+                msg: "Expected a number, string or boolean value ".to_string(),
+                found: self.peek().unwrap().token_type,
+                position: self.position(),
+            })
         }
     }
 
@@ -234,7 +235,10 @@ impl Parser {
                         arguments: self.arguments()?,
                         postion: self.position(),
                     };
-                    self.consume(TokenType::RightParen)?;
+                    self.consume(
+                        TokenType::RightParen,
+                        "Expected a closing bracket ')' in call statement",
+                    )?;
                 }
             } else {
                 break;
@@ -365,10 +369,12 @@ impl Parser {
 
                 return Ok(expr);
             } else {
-                return Err(ParserError::ExpectedOneOf(
-                    vec![TokenType::Colon],
-                    self.position(),
-                ));
+                return Err(ParserError::Expected {
+                    found: self.peek().unwrap().token_type,
+                    msg: "Expected colon after the second expression in a ternary expression."
+                        .to_string(),
+                    position: self.position(),
+                });
             }
         }
 
@@ -446,7 +452,7 @@ impl Parser {
     /// exprStatement  -> expression ";";
     fn expression_statement(&mut self) -> ParserResult<Stmt> {
         let stmt = Stmt::ExprStmt(self.expression()?);
-        self.consume(TokenType::Semicolon)?;
+        self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
 
         Ok(stmt)
     }
@@ -454,7 +460,7 @@ impl Parser {
     /// printStatement -> "print" expression ";";
     fn print_statement(&mut self) -> ParserResult<Stmt> {
         let stmt = Stmt::PrintStmt(self.expression()?);
-        self.consume(TokenType::Semicolon)?;
+        self.consume(TokenType::Semicolon, "Expected ';' after 'print' statement")?;
 
         Ok(stmt)
     }
@@ -471,9 +477,16 @@ impl Parser {
     }
 
     fn if_statement(&mut self) -> ParserResult<Stmt> {
-        self.consume(TokenType::LeftParen)?;
+        println!("Current: {}, Next: {:?}", self.current, self.peek());
+        self.consume(
+            TokenType::LeftParen,
+            "Expected '(' before condition in an 'if' statement",
+        )?;
         let condition = self.expression()?;
-        self.consume(TokenType::RightParen)?;
+        self.consume(
+            TokenType::RightParen,
+            "Expected ')' after condition in an 'if' statement",
+        )?;
 
         let true_stmt = Box::new(self.statement()?);
 
@@ -493,9 +506,15 @@ impl Parser {
 
     /// whileStmt -> "while" "(" expression ")" statement;
     fn while_statement(&mut self) -> ParserResult<Stmt> {
-        self.consume(TokenType::LeftParen)?;
+        self.consume(
+            TokenType::LeftParen,
+            "Expected '(' before condition in while loop",
+        )?;
         let condition = self.expression()?;
-        self.consume(TokenType::RightParen)?;
+        self.consume(
+            TokenType::RightParen,
+            "Expected ')' after condition in 'while' loop",
+        )?;
 
         let body = Box::new(self.statement()?);
 
@@ -510,7 +529,10 @@ impl Parser {
     ///            expression? ";"
     ///            expression? ")" statement;
     fn for_statement(&mut self) -> Result<Stmt, ParserError> {
-        self.consume(TokenType::LeftParen)?;
+        self.consume(
+            TokenType::LeftParen,
+            "Expected '(' before condition in 'for' loop",
+        )?;
 
         // ( varDecl | exprStmt | ";") ;
         let initializer: Option<Stmt>;
@@ -528,7 +550,10 @@ impl Parser {
             condition = None;
         } else {
             condition = Some(self.expression()?);
-            self.consume(TokenType::Semicolon)?;
+            self.consume(
+                TokenType::Semicolon,
+                "Expected ';' after condition in for loop",
+            )?;
         }
 
         // expression? ")" ;
@@ -537,7 +562,10 @@ impl Parser {
             increment = None;
         } else {
             increment = Some(self.expression()?);
-            self.consume(TokenType::RightParen)?;
+            self.consume(
+                TokenType::RightParen,
+                "Expected ')' after increment in for loop",
+            )?;
         }
 
         let mut block_declarations: Vec<Stmt> = Vec::new();
@@ -575,13 +603,19 @@ impl Parser {
 
     /// breakStmt  -> "break" ";" ;
     fn break_statement(&mut self) -> ParserResult<Stmt> {
-        self.consume(TokenType::Semicolon)?;
+        self.consume(
+            TokenType::Semicolon,
+            "Expected ';' at the end of a 'break' statement",
+        )?;
         Ok(Stmt::BreakStmt(self.position()))
     }
 
     /// breakStmt  -> "continue" ";" ;
     fn continue_statement(&mut self) -> ParserResult<Stmt> {
-        self.consume(TokenType::Semicolon)?;
+        self.consume(
+            TokenType::Semicolon,
+            "Expected ';' at the end of a 'continue' statement",
+        )?;
         Ok(Stmt::ContinueStmt(self.position()))
     }
 
@@ -596,7 +630,10 @@ impl Parser {
             })
         } else {
             let expr = Some(self.expression()?);
-            self.consume(TokenType::Semicolon)?;
+            self.consume(
+                TokenType::Semicolon,
+                "Expected ';' at the end of a 'return' statement",
+            )?;
             Ok(Stmt::ReturnStmt { expr, position })
         }
     }
@@ -636,16 +673,16 @@ impl Parser {
 
     /// varDeclaration -> "var" IDENTIFIER ("=" expression)?;
     fn var_declaration(&mut self) -> ParserResult<Stmt> {
-        let literal = self.advance().unwrap().literal.unwrap();
+        let ident_token = self.advance().unwrap();
 
-        let name = match literal {
-            LoxValue::Identifier(s) => s,
-            _ => {
-                return Err(ParserError::ExpectedOneOf(
-                    vec![TokenType::Identifier],
-                    self.position(),
-                ))
-            }
+        let name = if let Some(LoxValue::Identifier(s)) = ident_token.literal {
+            s
+        } else {
+            return Err(ParserError::Expected {
+                found: ident_token.token_type,
+                msg: "Expected identifier after 'var' in variable declaration.".to_string(),
+                position: self.position(),
+            });
         };
 
         let initializer = if self.matches(vec![TokenType::Equal]) {
@@ -657,7 +694,10 @@ impl Parser {
             }
         };
 
-        self.consume(TokenType::Semicolon)?;
+        self.consume(
+            TokenType::Semicolon,
+            "Expected ';' at the end of a variable declaration",
+        )?;
 
         Ok(Stmt::Var {
             name,
@@ -671,13 +711,17 @@ impl Parser {
         let name = if let LoxValue::Identifier(ident) = self.advance().unwrap().literal.unwrap() {
             ident
         } else {
-            return Err(ParserError::ExpectedOneOf(
-                vec![TokenType::Identifier],
-                self.previous().unwrap().position,
-            ));
+            return Err(ParserError::Expected {
+                found: self.prev_token_type(),
+                msg: "Expected an identifier in the function declaration.".to_string(),
+                position: self.position(),
+            });
         };
 
-        self.consume(TokenType::LeftParen)?;
+        self.consume(
+            TokenType::LeftParen,
+            "Expected '(' before parameters in function declaration",
+        )?;
 
         let mut params: Vec<String> = Vec::new();
         if !self.matches(vec![TokenType::RightParen]) {
@@ -685,17 +729,25 @@ impl Parser {
                 match arg {
                     Expr::Identifier(ident, _position) => params.push(ident),
                     _ => {
-                        return Err(ParserError::ExpectedOneOf(
-                            vec![TokenType::Identifier],
-                            self.position(),
-                        ))
+                        return Err(ParserError::Expected {
+                            found: TokenType::Nil,
+                            msg: "Parameters in function declaration must be identifiers"
+                                .to_string(),
+                            position: self.position(),
+                        });
                     }
                 }
             }
-            self.consume(TokenType::RightParen)?;
+            self.consume(
+                TokenType::RightParen,
+                "Expected ')' after parameters in a function declaration",
+            )?;
         }
 
-        self.consume(TokenType::LeftBrace)?;
+        self.consume(
+            TokenType::LeftBrace,
+            "Expected '{' at the beginning of the body of a function",
+        )?;
 
         let body = if let Stmt::Block(declarations) = self.block()? {
             declarations

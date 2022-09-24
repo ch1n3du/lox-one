@@ -11,8 +11,12 @@ pub enum ParserError {
     ExpectedClosingBrace(Position),
     #[error("Unexpected token {0}, {1}.")]
     UnexpectedToken(Token, Position),
-    #[error("Expected one of {0:?}, {1}")]
-    ExpectedOneOf(Vec<TokenType>, Position),
+    #[error("{msg}, found '{found}' at {position}")]
+    Expected {
+        found: TokenType,
+        msg: String,
+        position: Position,
+    },
     #[error("Arguments exceeded limit of 250, {0}")]
     ArgumentLimitReached(Position),
 }

@@ -57,39 +57,39 @@ pub enum TokenType {
     Number,
 
     // Keywords
-    #[display("AND")]
+    #[display("and")]
     And,
-    #[display("OR")]
+    #[display("or")]
     Or,
-    #[display("TRUE")]
+    #[display("true")]
     True,
-    #[display("FALSE")]
+    #[display("false")]
     False,
-    #[display("NIL")]
+    #[display("nil")]
     Nil,
-    #[display("IF")]
+    #[display("if")]
     If,
-    #[display("ELSE")]
+    #[display("else")]
     Else,
-    #[display("WHILE")]
+    #[display("while")]
     While,
-    #[display("FOR")]
+    #[display("for")]
     For,
-    #[display("BREAK")]
+    #[display("break")]
     Break,
-    #[display("CONTINUE")]
+    #[display("continue")]
     Continue,
-    #[display("FUN")]
+    #[display("fun")]
     Fun,
-    #[display("CLASS")]
+    #[display("class")]
     Class,
-    #[display("RETURN")]
+    #[display("return")]
     Return,
-    #[display("PRINT")]
+    #[display("print")]
     Print,
-    #[display("SUPER")]
+    #[display("super")]
     Super,
-    #[display("THIS")]
+    #[display("this")]
     This,
     #[display("VAR")]
     Var,

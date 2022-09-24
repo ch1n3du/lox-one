@@ -259,6 +259,7 @@ impl Scanner {
                 self.column = 1;
             }
             b' ' | b'\r' | b'\t' => (),
+            // b' ' | b'\r' | b'\t' => (),
             _ => println!("Invalid character {}", self.line),
         }
     }
@@ -315,5 +316,11 @@ fn is_valid_ident_char(c: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use super::*;
+
+    #[test]
+    fn parses_left_paren() {
+        let tokens = Scanner::tokens_from_str("if (true)", true);
+        assert_eq!(tokens[1].token_type, TokenType::LeftParen)
+    }
 }

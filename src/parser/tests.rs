@@ -1,10 +1,7 @@
-// use super::Parser;
-// use crate::{parser_errors::ParserError, scanner::Scanner, token_type::TokenType};
 use super::*;
 
 use crate::parser::Parser;
 use crate::scanner::Scanner;
-
 use crate::utils::{log_items, read_file};
 
 fn assert_can_parse(title: &str, src: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
@@ -24,81 +21,91 @@ fn assert_can_parse(title: &str, src: &str, verbose: bool) -> (Vec<Stmt>, Vec<Pa
     //     )
     // }
 
+    // for stmt in &statements {
+    //     println!("{stmt}")
+    // }
+
     (statements, errors)
 }
 
-fn assert_can_parse_file(path: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
-    let src = read_file(path);
+fn assert_can_parse_file(file_name: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
+    let path = format!("examples/{}.lox", file_name);
+    let src = read_file(path.as_str());
 
-    assert_can_parse(path, src.as_str(), verbose)
+    assert_can_parse(path.as_str(), src.as_str(), verbose)
 }
 
 #[test]
-fn can_parse_expr_statements() {
-    assert_can_parse_file("examples/expr_stmt.lox", false);
+fn parses_expr_stmts() {
+    assert_can_parse_file("expr_stmt", false);
 }
 
 #[test]
-fn can_parse_print_statements() {
-    assert_can_parse_file("examples/print_stmt.lox", false);
+fn can_parse_print_stmt() {
+    assert_can_parse_file("print_stmt", false);
 }
 
 #[test]
-fn can_parse_variable_declarations() {
-    assert_can_parse_file("examples/variables.lox", false);
+fn can_parse_variables() {
+    assert_can_parse_file("variables", false);
 }
 
+//     ("assignment", false),
 #[test]
-fn can_parse_assignment_expressions() {
-    assert_can_parse_file("examples/assignment.lox", false);
+fn can_parse_assignment() {
+    assert_can_parse_file("assignment", false);
 }
 
+//     ("if_stmt", false),
 #[test]
-fn can_parse_block_statements() {
-    assert_can_parse_file("examples/variables.lox", false);
+fn can_parse_if_stmt() {
+    assert_can_parse_file("if_stmt", false);
 }
 
+//     ("if_else_stmt", false),
 #[test]
-fn can_parse_if_statements() {
-    assert_can_parse_file("examples/if_stmt.lox", false);
+fn can_logical_if_else_stmt() {
+    assert_can_parse_file("if_else_stmt", false);
 }
 
+//     ("logic_and", false),
 #[test]
-fn can_parse_if_else_statements() {
-    assert_can_parse_file("examples/if_else_stmt.lox", false);
+fn can_parse_logical_and_stmt() {
+    assert_can_parse_file("logic_and", false);
 }
 
+//     ("logic_or", false),
 #[test]
-fn can_parse_logical_and() {
-    assert_can_parse_file("examples/logic_and.lox", false);
+fn can_parse_logical_or_stmt() {
+    assert_can_parse_file("logic_or", false);
 }
 
+//     ("while_stmt", false),
 #[test]
-fn can_parse_logical_or() {
-    assert_can_parse_file("examples/logic_or.lox", false);
+fn can_parse_while_stmt() {
+    assert_can_parse_file("while_stmt", false);
 }
 
+//     ("for_stmt", false),
 #[test]
-fn can_parse_while_statements() {
-    assert_can_parse_file("examples/while_stmt.lox", false);
+fn can_parse_for_stmt() {
+    assert_can_parse_file("for_stmt", false);
 }
 
+//     ("continue", false),
 #[test]
-fn can_parse_for_statements() {
-    assert_can_parse_file("examples/for_stmt.lox", false);
+fn can_parse_continue() {
+    assert_can_parse_file("continue", false);
 }
 
+// //     ("call_stmt", false),
 #[test]
-fn can_parse_continue_statements() {
-    assert_can_parse_file("examples/continue.lox", false);
+fn can_parse_call_stmt() {
+    assert_can_parse_file("call_stmt", false);
 }
 
+//     ("fun_decl", false),
 #[test]
-fn can_parse_call_expressions() {
-    assert_can_parse_file("examples/call_stmt.lox", false);
-}
-
-#[test]
-fn can_parse_fun_declaration() {
-    assert_can_parse_file("examples/fun_decl.lox", false);
+fn can_parse_fun_decl_stmt() {
+    assert_can_parse_file("fun_decl", false);
 }

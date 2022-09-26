@@ -1,3 +1,6 @@
+use interpreter::Interpreter;
+use parser::Parser;
+
 pub mod ast;
 pub mod lox_value;
 
@@ -7,6 +10,8 @@ pub mod token_type;
 
 pub mod parser;
 
+pub mod cli;
+pub mod error;
 pub mod interpreter;
 
 mod callable;

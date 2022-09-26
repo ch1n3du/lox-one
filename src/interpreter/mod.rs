@@ -7,8 +7,10 @@ mod resolver;
 mod tests;
 
 use crate::ast::{Expr, Stmt};
+use crate::error::{LoxError, LoxResult};
 use crate::function::Function;
 use crate::lox_value::LoxValue;
+use crate::parser::Parser;
 use crate::token_type::TokenType;
 
 use self::environment::Environment;
@@ -16,15 +18,15 @@ use self::error::{RuntimeError, RuntimeResult};
 
 #[derive(Debug)]
 pub struct Interpreter {
-    environment: Environment,
+    pub environment: Environment,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         let mut environment = Environment::new();
 
-        environment.values.insert(
-            "clock".to_string(),
+        environment.define(
+            "clock",
             LoxValue::Function(Function::new_native_fun(
                 "clock".to_string(),
                 0,
@@ -150,9 +152,15 @@ impl Interpreter {
                     }
 
                     // String Concatenation
-                    (Plus, LoxValue::String(s1), LoxValue::String(s2)) => {
-                        Ok(LoxValue::String(s1 + s2.as_str()))
+                    (Plus, LoxValue::String(s1), rhs) => Ok(LoxValue::String(format!(
+                        "{}{}",
+                        s1.to_string(),
+                        rhs.to_string()
+                    ))),
+                    (Star, LoxValue::String(s1), LoxValue::Number(n)) => {
+                        Ok(LoxValue::String(s1.repeat(n as usize)))
                     }
+
                     (_op, _lhs, _rhs) => Err(RuntimeError::Generic(
                         format!("Don't really know: LHS: {} OP: {} RHS: {}", _lhs, _op, _rhs),
                         op.position,
@@ -203,25 +211,8 @@ impl Interpreter {
         }
     }
 
-    pub fn execute_block(
-        &mut self,
-        declarations: &Vec<Stmt>,
-        env: Environment,
-        in_loop: bool,
-        in_function: bool,
-    ) -> RuntimeResult<Option<LoxValue>> {
-        let mut env = env;
-        env.enclosing = Some(Box::new(self.environment.clone()));
-        self.environment = env;
-        let res = self.interpret(declarations, in_loop, in_function);
-        // TODO UNDO
-        self.environment = *self.environment.enclosing.clone().unwrap();
-
-        res
-    }
-
     /// Executes a statement.
-    fn execute(
+    pub fn execute(
         &mut self,
         statement: &Stmt,
         in_loop: bool,
@@ -246,18 +237,21 @@ impl Interpreter {
                 self.environment.define(name, initializer);
             }
             Block(declarations) => {
-                let env = Environment::new();
-                return self.execute_block(declarations, env, in_loop, in_function);
+                self.environment.begin_scope();
+                let res = self.interpret(declarations, in_loop, in_function)?;
+                self.environment.end_scope();
+
+                return Ok(res);
             }
             IfStmt {
                 condition,
-                true_stmt,
-                false_stmt,
+                then_branch,
+                else_branch,
                 position: _,
             } => {
                 if self.evaluate(condition)?.is_truthy() {
-                    self.execute(&true_stmt, true, in_function)?;
-                } else if let Some(stmt) = false_stmt {
+                    self.execute(&then_branch, true, in_function)?;
+                } else if let Some(stmt) = else_branch {
                     self.execute(&stmt, true, in_function)?;
                 }
             }
@@ -310,7 +304,7 @@ impl Interpreter {
     /// Executes statements given.
     pub fn interpret(
         &mut self,
-        statements: &Vec<Stmt>,
+        statements: &[Stmt],
         in_loop: bool,
         in_function: bool,
     ) -> RuntimeResult<Option<LoxValue>> {
@@ -339,7 +333,14 @@ impl Interpreter {
         Ok(None)
     }
 
-    fn resolve(&mut self, expr: &Expr, depth: usize) {
+    fn resolve(&mut self, expr: &Expr, depth: usize) -> RuntimeResult<()> {
         todo!()
+    }
+
+    pub fn interpret_str(&mut self, source: &str) -> LoxResult<Option<LoxValue>> {
+        let stmts = Parser::parse_str(source)?;
+
+        self.interpret(&stmts, false, false)
+            .map_err(|e| LoxError::Runtime(e))
     }
 }

@@ -4,15 +4,14 @@ use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::utils::{log_items, read_file};
 
-fn assert_can_parse(title: &str, src: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
+fn assert_can_parse(title: &str, src: &str, verbose: bool) -> Vec<Stmt> {
     let tokens = Scanner::tokens_from_str(src, verbose);
 
     let mut parser = Parser::new(tokens);
-    let (statements, errors) = parser.program();
-
-    if errors.len() != 0 {
-        log_items(format!("Errors parsing {}", title).as_str(), &errors)
-    }
+    let statements = parser.program().unwrap_or_else(|e| {
+        println!("{e}");
+        panic!()
+    });
 
     // if verbose {
     //     log_items(
@@ -25,10 +24,10 @@ fn assert_can_parse(title: &str, src: &str, verbose: bool) -> (Vec<Stmt>, Vec<Pa
     //     println!("{stmt}")
     // }
 
-    (statements, errors)
+    statements
 }
 
-fn assert_can_parse_file(file_name: &str, verbose: bool) -> (Vec<Stmt>, Vec<ParserError>) {
+fn assert_can_parse_file(file_name: &str, verbose: bool) -> Vec<Stmt> {
     let path = format!("examples/{}.lox", file_name);
     let src = read_file(path.as_str());
 
@@ -109,3 +108,8 @@ fn can_parse_call_stmt() {
 fn can_parse_fun_decl_stmt() {
     assert_can_parse_file("fun_decl", false);
 }
+
+// #[test]
+// fn can_parse_error_stmt() {
+// assert_can_parse_file("errors", false);
+// }

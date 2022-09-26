@@ -14,7 +14,7 @@ use parse_display::Display;
 pub struct FunDecl {
     pub name: String,
     pub params: Vec<String>,
-    pub body: Vec<Stmt>,
+    pub body: Box<Stmt>,
 }
 
 pub type NativeFunction = fn(&mut Interpreter, &[LoxValue]) -> RuntimeResult<LoxValue>;
@@ -95,15 +95,14 @@ impl Callable for Function {
                 callable,
             } => callable(interpreter, args),
             User(decl) => {
-                let params_and_args: Vec<(String, LoxValue)> = decl
-                    .params
-                    .clone()
-                    .into_iter()
-                    .zip(args.into_iter().cloned())
-                    .collect();
-                let env = Environment::from(params_and_args);
+                // Create new environment
+                interpreter.environment.begin_scope();
+                for (param, arg) in decl.params.iter().zip(args.into_iter().cloned()) {
+                    interpreter.environment.define(param, arg);
+                }
 
-                let res = interpreter.execute_block(&decl.body, env, false, true)?;
+                let res = interpreter.execute(&decl.body, false, true)?;
+                interpreter.environment.end_scope();
 
                 if let Some(value) = res {
                     Ok(value)

@@ -7,7 +7,9 @@ pub mod error;
 #[cfg(test)]
 mod tests;
 
+use crate::error::{LoxError, LoxResult};
 use crate::function::FunDecl;
+use crate::scanner::Scanner;
 use crate::token::{Position, Token};
 use crate::token_type::TokenType;
 
@@ -125,7 +127,8 @@ impl Parser {
     /// Synchronizes on error.
     /// While current is not at end
     fn synchronize(&mut self) {
-        println!("Called synchronize");
+        // ! UNCOMMENT FOR DEBUGGING
+        // println!("Called synchronize");
         self.advance();
 
         while !self.is_at_end() {
@@ -488,9 +491,9 @@ impl Parser {
             "Expected ')' after condition in an 'if' statement",
         )?;
 
-        let true_stmt = Box::new(self.statement()?);
+        let then_branch = Box::new(self.statement()?);
 
-        let false_stmt = if self.matches(vec![TokenType::Else]) {
+        let else_branch = if self.matches(vec![TokenType::Else]) {
             Some(Box::new(self.statement()?))
         } else {
             None
@@ -498,8 +501,8 @@ impl Parser {
 
         Ok(Stmt::IfStmt {
             condition,
-            true_stmt,
-            false_stmt,
+            then_branch,
+            else_branch,
             position: self.position(),
         })
     }
@@ -749,11 +752,7 @@ impl Parser {
             "Expected '{' at the beginning of the body of a function",
         )?;
 
-        let body = if let Stmt::Block(declarations) = self.block()? {
-            declarations
-        } else {
-            panic!("Should be impossible to not get block")
-        };
+        let body = Box::new(self.block()?);
 
         let fun_declaration = FunDecl { name, params, body };
 
@@ -782,7 +781,7 @@ impl Parser {
     }
 
     /// program -> declaration* EOF
-    pub fn program(&mut self) -> (Vec<Stmt>, Vec<ParserError>) {
+    pub fn program(&mut self) -> ParserResult<Vec<Stmt>> {
         let mut statements: Vec<Stmt> = Vec::new();
         let mut errors: Vec<ParserError> = Vec::new();
 
@@ -797,6 +796,17 @@ impl Parser {
             }
         }
 
-        (statements, errors)
+        if errors.is_empty() {
+            Ok(statements)
+        } else {
+            Err(ParserError::Bundle(errors))
+        }
+    }
+
+    pub fn parse_str(src: &str) -> LoxResult<Vec<Stmt>> {
+        let tokens = Scanner::tokens_from_str(src, false);
+        Parser::new(tokens)
+            .program()
+            .map_err(|e| LoxError::Parser(e))
     }
 }

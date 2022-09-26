@@ -1,24 +1,42 @@
 use crate::token::{Position, Token};
 use crate::token_type::TokenType;
 
-use thiserror::Error;
-
-#[derive(Debug, Error, Clone)]
+#[derive(Debug, Clone)]
 pub enum ParserError {
-    #[error("End of file reached, {0}.")]
     Eof(Position),
-    #[error("Expected closing brace, {0}.")]
     ExpectedClosingBrace(Position),
-    #[error("Unexpected token {0}, {1}.")]
     UnexpectedToken(Token, Position),
-    #[error("{msg}, found '{found}' at {position}")]
     Expected {
         found: TokenType,
         msg: String,
         position: Position,
     },
-    #[error("Arguments exceeded limit of 250, {0}")]
     ArgumentLimitReached(Position),
+    Bundle(Vec<ParserError>),
+}
+
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use ParserError::*;
+        match self {
+            Eof(p) => write!(f, "End of file reached, {p}."),
+            ExpectedClosingBrace(p) => write!(f, "Expected closing brace, {p}."),
+            UnexpectedToken(token, p) => write!(f, "Unexpected token {token}, {p}"),
+            Expected {
+                found,
+                msg,
+                position,
+            } => write!(f, "{msg}, found '{found}' at {position}"),
+            ArgumentLimitReached(p) => write!(f, "Arguments exceeded limit of 250, {p}"),
+            Bundle(errs) => {
+                for err in errs {
+                    writeln!(f, "{err}")?;
+                }
+
+                Ok(())
+            }
+        }
+    }
 }
 
 pub type ParserResult<T> = Result<T, ParserError>;

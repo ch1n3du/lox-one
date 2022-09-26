@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{Expr, Stmt},
-    lox_value::LoxValue,
+    function::FunDecl,
 };
 
 use super::{
@@ -32,7 +32,7 @@ impl Resolver {
                 self.resolve_stmts(statements)?;
                 self.end_scope();
             }
-            Stmt::Var {
+            Var {
                 name,
                 initializer,
                 postion: _,
@@ -50,23 +50,65 @@ impl Resolver {
                 }
                 self.define(name);
             }
-            _ => todo!(),
+            FunStmt {
+                fun_declaration,
+                position: _,
+            } => {
+                self.declare(&fun_declaration.name);
+                self.define(&fun_declaration.name);
+            }
+            ExprStmt(expr) => {
+                self.resolve_expr(expr)?;
+            }
+            IfStmt {
+                condition,
+                then_branch,
+                else_branch,
+                ..
+            } => {
+                self.resolve_expr(condition)?;
+                self.resolve_block(then_branch)?;
+
+                if let Some(else_block) = else_branch {
+                    self.resolve_block(&else_block)?;
+                }
+            }
+            PrintStmt(expr) => self.resolve_expr(expr)?,
+            ReturnStmt { expr, .. } => {
+                if let Some(value) = expr {
+                    self.resolve_expr(value)?;
+                }
+            }
+            WhileStmt {
+                condition, body, ..
+            } => {
+                self.resolve_expr(condition)?;
+                self.resolve_block(&body)?;
+            }
+            ContinueStmt(_) => (),
+            BreakStmt(_) => (),
         }
 
         Ok(())
     }
 
-    /// TODO Resolves a mutable slice of statements
-    fn resolve_stmts(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
-        for stmt in stmts {
-            self.resolve_stmt(stmt)?;
+    fn resolve_function(&mut self, fun_declaration: &FunDecl) -> RuntimeResult<()> {
+        self.begin_scope();
+        for param in &fun_declaration.params {
+            self.declare(param);
+            self.define(param);
         }
+        self.resolve_block(&fun_declaration.body)?;
+        self.end_scope();
+
         Ok(())
     }
 
     fn resolve_expr(&mut self, expr: &Expr) -> RuntimeResult<()> {
+        use Expr::*;
+
         match expr {
-            Expr::Identifier(name, position) => {
+            Identifier(name, position) => {
                 // Check if variable is initialized yet.
                 if !self.scopes.is_empty() {
                     if let Some(false) = self.scopes.last_mut().unwrap().get(name) {
@@ -79,22 +121,67 @@ impl Resolver {
 
                 self.resolve_local(expr, name)?;
             }
-            _ => todo!(),
+            assign_expr @ Assignment { name, value, .. } => {
+                self.resolve_expr(&value)?;
+                self.resolve_local(assign_expr, name)?;
+            }
+            Binary { lhs, rhs, .. } => {
+                self.resolve_expr(lhs)?;
+                self.resolve_expr(rhs)?;
+            }
+            Call {
+                callee, arguments, ..
+            } => {
+                self.resolve_expr(callee)?;
+
+                for argument in arguments {
+                    self.resolve_expr(argument)?;
+                }
+            }
+            Grouping(expr, ..) => {
+                self.resolve_expr(expr)?;
+            }
+            Value { .. } => (),
+            Unary { rhs, .. } => self.resolve_expr(rhs)?,
+            Ternary {
+                condition,
+                result_1,
+                result_2,
+                ..
+            } => {
+                self.resolve_expr(condition)?;
+                self.resolve_expr(result_1)?;
+                self.resolve_expr(result_2)?;
+            }
         }
 
         Ok(())
     }
 
-    // TODO
     fn resolve_local(&mut self, expr: &Expr, name: &str) -> RuntimeResult<()> {
         for (index, scope) in self.scopes.iter().rev().enumerate() {
             if scope.contains_key(name) {
-                // self.interpreter.resolve(name, index);
-
-                // return;
+                self.interpreter
+                    .resolve(expr, self.scopes.len() - 1 - index)?;
             }
         }
-        todo!()
+        Ok(())
+    }
+
+    /// TODO Resolves a mutable slice of statements
+    fn resolve_stmts(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
+        for stmt in stmts {
+            self.resolve_stmt(stmt)?;
+        }
+        Ok(())
+    }
+
+    fn resolve_block(&mut self, block: &Stmt) -> RuntimeResult<()> {
+        if let Stmt::Block(stmts) = block {
+            self.resolve_stmts(stmts)?;
+        }
+
+        Ok(())
     }
 
     fn begin_scope(&mut self) {

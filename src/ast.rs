@@ -105,8 +105,8 @@ pub enum Stmt {
     Block(Vec<Stmt>),
     IfStmt {
         condition: Expr,
-        true_stmt: Box<Stmt>,
-        false_stmt: Option<Box<Stmt>>,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>,
         position: Position,
     },
     WhileStmt {
@@ -147,12 +147,12 @@ impl fmt::Display for Stmt {
             }
             IfStmt {
                 condition,
-                true_stmt,
-                false_stmt,
+                then_branch,
+                else_branch,
                 position: _,
-            } => match false_stmt {
-                None => write!(f, "if ({}) {}", condition, true_stmt,),
-                Some(stmt) => write!(f, "if ({}) {} else {}", condition, true_stmt, stmt),
+            } => match else_branch {
+                None => write!(f, "if ({}) {}", condition, then_branch,),
+                Some(stmt) => write!(f, "if ({}) {} else {}", condition, then_branch, stmt),
             },
             WhileStmt {
                 condition,

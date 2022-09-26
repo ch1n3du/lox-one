@@ -3,7 +3,7 @@ fun add(a, b) {
     return x;
 }
 
-print add(1, 2);
+print "You're a boss";
 
 fun how_deep_that_stack_go(n) {
     print n;
@@ -11,6 +11,7 @@ fun how_deep_that_stack_go(n) {
     how_deep_that_stack_go(n + 1);
 }
 
+how_deep_that_stack_go(10);
 // how_deep_that_stack_go(1);
 
 // fun fib(n) {

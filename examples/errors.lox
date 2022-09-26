@@ -1,7 +1,15 @@
-var x = 323; // Should throw "Expected ';'"
+var x = 323;
 
-{
-    var f = "This is a string";
+if x < 21 {
+} else {
 }
 
-print ;
+fun decl() {
+    return 323
+}
+
+fun () { return 31; }
+
+while (23 < 12) {
+
+while (1 == 12 {}

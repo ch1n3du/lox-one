@@ -7,7 +7,8 @@ pub fn read_file(path: &str) -> String {
     let mut file = File::open(path).expect(&format!("\n\nError opening: {}\n", path));
 
     let mut src = String::new();
-    file.read_to_string(&mut src).expect(&format!("\n\nError reading: {}\n", path));
+    file.read_to_string(&mut src)
+        .expect(&format!("\n\nError reading: {}\n", path));
 
     src
 }

@@ -4,64 +4,65 @@ use crate::lox_value::LoxValue;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
-    pub enclosing: Option<Box<Environment>>,
-    pub values: HashMap<String, LoxValue>,
+    scopes: Vec<HashMap<String, LoxValue>>,
 }
 
 impl Environment {
     pub fn new() -> Environment {
         Environment {
-            enclosing: None,
-            values: HashMap::new(),
+            scopes: vec![HashMap::new()],
         }
     }
 
-    pub fn from(raw_vals: Vec<(String, LoxValue)>) -> Environment {
-        let mut values = HashMap::new();
-
-        for (name, value) in raw_vals {
-            values.insert(name, value);
-        }
-
-        Environment {
-            enclosing: None,
-            values,
-        }
+    pub fn begin_scope(&mut self) {
+        self.scopes.push(HashMap::new())
     }
 
-    pub fn with_enclosing(enclosing: &Environment) -> Environment {
-        Environment {
-            enclosing: Some(Box::new(enclosing.to_owned())),
-            values: HashMap::new(),
+    pub fn end_scope(&mut self) {
+        if self.scopes.len() < 2 {
+            panic!("You can't end the global scope dumbass")
         }
+        self.scopes.pop();
     }
 
     pub fn get(&self, name: &str) -> Option<LoxValue> {
-        let value = self.values.get(name);
-
-        if value.is_some() {
-            value.map(|v| v.clone())
-        } else {
-            match self.enclosing.as_ref() {
-                Some(prev) => prev.get(name),
-                None => None,
+        for scope in self.scopes.iter().rev() {
+            if scope.contains_key(name) {
+                return scope.get(name).map(|v| v.to_owned());
             }
+        }
+
+        None
+    }
+
+    pub fn get_at(&self, name: &str, depth: usize) -> Option<LoxValue> {
+        self.scopes[depth].get(name).map(|v| v.to_owned())
+    }
+
+    pub fn set_at(&mut self, name: &str, value: LoxValue, depth: usize) -> Option<()> {
+        if self.scopes[depth].contains_key(name) {
+            self.scopes[depth].insert(name.to_string(), value);
+            Some(())
+        } else {
+            None
         }
     }
 
     pub fn define(&mut self, name: &str, initializer: LoxValue) {
-        self.values.insert(name.to_string(), initializer);
+        self.scopes
+            .last_mut()
+            .unwrap()
+            .insert(name.to_string(), initializer);
     }
 
     pub fn assign(&mut self, name: &str, value: LoxValue) -> Option<()> {
-        if self.values.contains_key(name) {
-            self.define(name, value);
-            return Some(());
+        for scope in self.scopes.iter_mut().rev() {
+            if scope.contains_key(name) {
+                scope.insert(name.to_string(), value);
+                return Some(());
+            }
         }
 
-        match &mut self.enclosing {
-            Some(enclosing) => enclosing.assign(name, value),
-            None => None,
-        }
+        None
     }
 }

@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 thiserror = "1.0.24"
 parse-display = "0.5.5"
+clap = { version = "3.2.21", features = ["derive"] }
+colored = "2"
 
 [dev-dependencies]
 parameterized = "1"

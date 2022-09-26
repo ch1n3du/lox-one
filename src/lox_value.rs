@@ -52,6 +52,19 @@ impl LoxValue {
         }
     }
 
+    pub fn to_string(&self) -> String {
+        use LoxValue::*;
+
+        match self {
+            Number(n) => n.to_string(),
+            String(s) => s.clone(),
+            Boolean(b) => b.to_string(),
+            Function(f) => format!("{f}"),
+            Identifier(_) => panic!("You can't concatenate an identifier stupid."),
+            Nil => "nil".to_string(),
+        }
+    }
+
     pub fn as_callable(&self) -> Option<Box<dyn Callable>> {
         use LoxValue::*;
 

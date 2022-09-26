@@ -7,12 +7,10 @@ use crate::utils::{log_items, read_file};
 fn assert_execution_of(title: &str, src: &str, verbose: bool) -> Interpreter {
     let tokens = Scanner::tokens_from_str(src, verbose);
 
-    let mut parser = Parser::new(tokens);
-    let (statements, errors) = parser.program();
-
-    if errors.len() != 0 {
-        log_items(title, &errors)
-    }
+    let statements = Parser::parse_str(src).unwrap_or_else(|e| {
+        println!("{e}");
+        panic!()
+    });
 
     let mut interpreter = Interpreter::new();
 

@@ -3,21 +3,23 @@ fun add(a, b) {
     return x;
 }
 
-print "You're a boss";
+// print "Fuck JAVA";
 
-fun how_deep_that_stack_go(n) {
-    print n;
+// fun how_deep_that_stack_go(n) {
+//     print n;
 
-    how_deep_that_stack_go(n + 1);
-}
+//     how_deep_that_stack_go(n + 1);
+// }
 
-how_deep_that_stack_go(10);
-// how_deep_that_stack_go(1);
+// // how_deep_that_stack_go(10);
+// // how_deep_that_stack_go(1);
 
 // fun fib(n) {
-//     if n < 2 {
-//         return 1
+//     if (n < 2) {
+//         return 1;
 //     } else {
 //         return fib(n-1) + fib(n-2);
 //     }
 // }
+
+// print fib(5);

@@ -28,7 +28,7 @@ pub enum Expr {
         condition: Box<Expr>,
         result_1: Box<Expr>,
         result_2: Box<Expr>,
-        postion: Position,
+        position: Position,
     },
     Assignment {
         name: String,
@@ -38,8 +38,24 @@ pub enum Expr {
     Call {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
-        postion: Position,
+        position: Position,
     },
+}
+
+impl Expr {
+    pub fn get_position(&self) -> Position {
+        use Expr::*;
+        match self {
+            Identifier(_, p) => p.to_owned(),
+            Value { position, .. } => position.clone(),
+            Grouping(_, position) => position.clone(),
+            Unary { position, .. } => position.clone(),
+            Binary { position, .. } => position.clone(),
+            Ternary { position, .. } => position.clone(),
+            Assignment { position, .. } => position.clone(),
+            Call { position, .. } => position.clone(),
+        }
+    }
 }
 
 impl fmt::Display for Expr {
@@ -64,7 +80,7 @@ impl fmt::Display for Expr {
                 condition,
                 result_1,
                 result_2,
-                postion: _,
+                position: _,
             } => write!(f, "{} ? {} : {}", condition, result_1, result_2),
             Identifier(name, _position) => write!(f, "{}", name),
             Assignment {
@@ -75,7 +91,7 @@ impl fmt::Display for Expr {
             Call {
                 callee,
                 arguments,
-                postion: _,
+                position: _,
             } => {
                 let args = if arguments.len() == 0 {
                     String::new()

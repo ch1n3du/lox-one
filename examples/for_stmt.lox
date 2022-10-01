@@ -1,7 +1,11 @@
 print "From first 'for' loop";
 
+var z = "afasd";
+
 for (var x = 0; x < 5; x = x + 1) {
+    var d = "a";
     print x;
+    print d;
 }
 
 print "From second 'for' loop";

@@ -1,10 +1,12 @@
+use std::hash::Hash;
+
 use crate::token_type::TokenType;
 
 use super::{callable::Callable, function::Function};
 
 use parse_display::Display;
 
-#[derive(Debug, Display, Clone, PartialEq)]
+#[derive(Debug, Display, Clone)]
 pub enum LoxValue {
     #[display("{0}")]
     Boolean(bool),
@@ -18,6 +20,10 @@ pub enum LoxValue {
     Identifier(String),
     #[display("nil")]
     Nil,
+}
+
+impl Hash for LoxValue {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {}
 }
 
 impl LoxValue {

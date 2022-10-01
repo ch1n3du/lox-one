@@ -230,13 +230,13 @@ impl Parser {
                     expr = Expr::Call {
                         callee: Box::new(expr),
                         arguments: Vec::new(),
-                        postion: self.position(),
+                        position: self.position(),
                     }
                 } else {
                     expr = Expr::Call {
                         callee: Box::new(expr),
                         arguments: self.arguments()?,
-                        postion: self.position(),
+                        position: self.position(),
                     };
                     self.consume(
                         TokenType::RightParen,
@@ -367,7 +367,7 @@ impl Parser {
                     condition: Box::new(expr),
                     result_1: Box::new(result_1),
                     result_2,
-                    postion: self.position(),
+                    position: self.position(),
                 };
 
                 return Ok(expr);

@@ -6,11 +6,15 @@ mod resolver;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
+
 use crate::ast::{Expr, Stmt};
 use crate::error::{LoxError, LoxResult};
 use crate::function::Function;
+use crate::interpreter::resolver::Resolver;
 use crate::lox_value::LoxValue;
 use crate::parser::Parser;
+use crate::token::Position;
 use crate::token_type::TokenType;
 
 use self::environment::Environment;
@@ -19,13 +23,15 @@ use self::error::{RuntimeError, RuntimeResult};
 #[derive(Debug)]
 pub struct Interpreter {
     pub environment: Environment,
+    pub globals: Environment,
+    pub locals: HashMap<Position, usize>,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
-        let mut environment = Environment::new();
+        let mut globals = Environment::new();
 
-        environment.define(
+        globals.define(
             "clock",
             LoxValue::Function(Function::new_native_fun(
                 "clock".to_string(),
@@ -33,7 +39,11 @@ impl Interpreter {
                 globals::clock,
             )),
         );
-        Interpreter { environment }
+        Interpreter {
+            environment: Environment::new(),
+            globals,
+            locals: HashMap::new(),
+        }
     }
 
     /// Evaluates an expression.
@@ -46,14 +56,37 @@ impl Interpreter {
             Value { value, position: _ } => Ok(value.to_owned()),
             Grouping(inner_expr, _position) => self.evaluate(inner_expr),
             Expr::Identifier(name, position) => {
-                if let Some(value) = self.environment.get(&name) {
-                    Ok(value.to_owned())
+                println!("Env before ident: {:?}", self.environment);
+                let dep = self.locals.get(position);
+
+                let res = if let Some(depth) = self.locals.get(position) {
+                    println!("Depth: {depth}");
+                    if let Some(e) = self.environment.get_at(name, depth.to_owned()) {
+                        return Ok(e);
+                    } else {
+                        println!("Environment: {:?}", self.environment);
+                        Err(RuntimeError::VarDoesNotExist {
+                            name: name.to_owned(),
+                            position: position.to_owned(),
+                        })
+                    }
                 } else {
-                    Err(RuntimeError::VarDoesNotExist {
-                        name: name.to_owned(),
-                        position: position.to_owned(),
-                    })
-                }
+                    println!("Environment: {:?}, at {position}", self.environment);
+                    if let Some(e) = self.globals.get(name) {
+                        return Ok(e);
+                    } else {
+                        Err(RuntimeError::VarDoesNotExist {
+                            name: name.to_owned(),
+                            position: position.to_owned(),
+                        })
+                    }
+                };
+                println!(
+                    "Env after ident: {:?} \nDepth: {dep:?}\nValueAt: {:?}",
+                    self.environment,
+                    self.environment.get_at(name, dep.unwrap().clone())
+                );
+                res
             }
             Assignment {
                 name,
@@ -171,7 +204,7 @@ impl Interpreter {
                 condition,
                 result_1,
                 result_2,
-                postion: _,
+                position: _,
             } => {
                 if self.evaluate(condition)?.is_truthy() {
                     self.evaluate(result_1)
@@ -182,7 +215,7 @@ impl Interpreter {
             Call {
                 callee,
                 arguments,
-                postion,
+                position,
             } => {
                 let callee = self.evaluate(callee)?;
 
@@ -198,13 +231,13 @@ impl Interpreter {
                     } else {
                         Err(RuntimeError::IncorrectArity {
                             name: callable.name(),
-                            position: postion.to_owned(),
+                            position: position.to_owned(),
                         })
                     }
                 } else {
                     Err(RuntimeError::NotCallable {
                         type_name: callee,
-                        position: postion.to_owned(),
+                        position: position.to_owned(),
                     })
                 }
             }
@@ -288,9 +321,11 @@ impl Interpreter {
             ReturnStmt { expr, position } => {
                 if in_function {
                     if let Some(value) = expr {
-                        return Ok(Some(self.evaluate(value)?));
+                        let value = self.evaluate(value)?;
+                        println!("Return value{value}");
+                        return Ok(Some(value));
                     } else {
-                        return Err(RuntimeError::InvalidBreak(position.to_owned()));
+                        return Ok(None);
                     }
                 } else {
                     return Err(RuntimeError::InvalidReturn(position.to_owned()));
@@ -309,6 +344,9 @@ impl Interpreter {
         in_function: bool,
     ) -> RuntimeResult<Option<LoxValue>> {
         use RuntimeError::*;
+
+        let mut resolver = Resolver::new(self);
+        resolver.resolve_program(statements)?;
 
         for statement in statements {
             match self.execute(statement, in_loop, in_function) {
@@ -334,7 +372,8 @@ impl Interpreter {
     }
 
     fn resolve(&mut self, expr: &Expr, depth: usize) -> RuntimeResult<()> {
-        todo!()
+        self.locals.insert(expr.get_position().to_owned(), depth);
+        Ok(())
     }
 
     pub fn interpret_str(&mut self, source: &str) -> LoxResult<Option<LoxValue>> {

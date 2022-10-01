@@ -10,13 +10,13 @@ use super::{
     Interpreter,
 };
 
-pub struct Resolver {
-    interpreter: Interpreter,
+pub struct Resolver<'a> {
+    interpreter: &'a mut Interpreter,
     scopes: Vec<HashMap<String, bool>>,
 }
 
-impl Resolver {
-    pub fn new(interpreter: Interpreter) -> Resolver {
+impl<'a> Resolver<'a> {
+    pub fn new(interpreter: &'a mut Interpreter) -> Resolver<'a> {
         Resolver {
             interpreter,
             scopes: Vec::new(),
@@ -159,10 +159,11 @@ impl Resolver {
     }
 
     fn resolve_local(&mut self, expr: &Expr, name: &str) -> RuntimeResult<()> {
-        for (index, scope) in self.scopes.iter().rev().enumerate() {
+        for (index, scope) in self.scopes.iter().enumerate().rev() {
             if scope.contains_key(name) {
-                self.interpreter
-                    .resolve(expr, self.scopes.len() - 1 - index)?;
+                let depth = self.scopes.len() - 1 - index;
+                println!("Resolved: {expr} at {index}");
+                self.interpreter.resolve(expr, depth)?;
             }
         }
         Ok(())
@@ -171,8 +172,20 @@ impl Resolver {
     /// TODO Resolves a mutable slice of statements
     fn resolve_stmts(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
         for stmt in stmts {
+            // println!("Resolving: {stmt}");
             self.resolve_stmt(stmt)?;
+            println!("Top: {:?}", self.scopes);
         }
+        Ok(())
+    }
+
+    pub fn resolve_program(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
+        println!("Before resolving: {:?}", self.scopes);
+        self.begin_scope();
+        self.resolve_stmts(stmts)?;
+        self.end_scope();
+        println!("After resolving: {:?}", self.scopes);
+
         Ok(())
     }
 

@@ -1,7 +1,7 @@
 use crate::{
     ast::Stmt,
     callable::Callable,
-    interpreter::{environment::Environment, error::RuntimeResult, Interpreter},
+    interpreter::{error::RuntimeResult, Interpreter},
     lox_value::LoxValue,
 };
 

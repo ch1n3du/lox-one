@@ -1,6 +1,6 @@
 use parse_display::Display;
 
-#[derive(Debug, Display, Clone, PartialEq)]
+#[derive(Debug, Display, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenType {
     //Single character tokens.
     #[display("(")]

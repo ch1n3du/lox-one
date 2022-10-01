@@ -3,7 +3,7 @@ use crate::token_type::TokenType;
 
 use parse_display::Display;
 
-#[derive(Debug, Display, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Display, Hash, PartialEq, Eq, Clone, Copy)]
 #[display("line {line}, column {column}")]
 pub struct Position {
     pub line: usize,
@@ -16,7 +16,7 @@ impl Position {
     }
 }
 
-#[derive(Debug, Display, Clone, PartialEq)]
+#[derive(Debug, Display, Clone)]
 #[display("<type: {token_type}, literal: {literal:?}, at {position}>")]
 pub struct Token {
     pub token_type: TokenType,

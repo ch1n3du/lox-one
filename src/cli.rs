@@ -25,7 +25,7 @@ pub fn run_repl(_verbose: bool) {
     println!("Enter 'exit' or ':q' to quit.");
 
     'a: loop {
-        print!("λ> ");
+        print!("{} ", "λ> ".white().bold());
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
@@ -37,7 +37,7 @@ pub fn run_repl(_verbose: bool) {
         if input.starts_with(":q") || input.starts_with("exit") {
             println!(
                 "{}",
-                "Goodbye and thanks for all the fish ><>".green().bold()
+                "Goodbye and thanks for all the fish ><> ><>".green().bold(),
             );
             break 'a;
         }

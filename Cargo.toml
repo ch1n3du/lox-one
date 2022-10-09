@@ -1,14 +1,20 @@
 [package]
-name = "lox-one"
+name = "lox_one"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+path = "src/lib/lib.rs"
+
+[[bin]]
+name = "lox_one"
+path = "src/bin/main.rs"
 
 [dependencies]
 thiserror = "1.0.24"
 parse-display = "0.6.0"
-clap = { version = "3.2.21", features = ["derive"] }
+clap = { version = "4.0.10", features = ["derive"] }
 colored = "2"
 
 [dev-dependencies]

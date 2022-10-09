@@ -10,7 +10,6 @@ pub mod token_type;
 
 pub mod parser;
 
-pub mod cli;
 pub mod error;
 pub mod interpreter;
 

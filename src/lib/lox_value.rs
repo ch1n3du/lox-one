@@ -1,5 +1,3 @@
-use std::hash::Hash;
-
 use crate::token_type::TokenType;
 
 use super::{callable::Callable, function::Function};

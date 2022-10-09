@@ -3,15 +3,30 @@ use std::io::{self, Write};
 use clap::Parser;
 use colored::Colorize;
 
-use crate::{error::LoxError, interpreter::Interpreter};
+use lox_one::{error::LoxError, interpreter::Interpreter};
 
 #[derive(Parser)]
-pub enum Args {
+#[command(name = "lox_one")]
+#[command(
+    about = "A tree-walking Lox Interpreter written by Ch1n3du.",
+    long_about = "This is small project I built to learn about compilers."
+)]
+pub enum CliArgs {
+    #[command(about = "Runs the lox_one REPL.")]
     Repl,
+    #[command(about = "Runs the given Lox program file.")]
     Run { src_path: String },
 }
 
-pub fn run_file(src_path: &str) {
+pub fn execute_args(args: &CliArgs) {
+    use CliArgs::*;
+    match args {
+        Repl => run_repl(false),
+        Run { src_path } => run_file(src_path),
+    }
+}
+
+fn run_file(src_path: &str) {
     let src = std::fs::read_to_string(src_path).expect(&format!("Error finding file {src_path}"));
     Interpreter::new().interpret_str(&src).unwrap_or_else(|e| {
         println!("{e}");
@@ -19,7 +34,7 @@ pub fn run_file(src_path: &str) {
     });
 }
 
-pub fn run_repl(_verbose: bool) {
+fn run_repl(_verbose: bool) {
     let mut interpreter = Interpreter::new();
     println!("Lox Interpreter Version 1.0.0");
     println!("Enter 'exit' or ':q' to quit.");
@@ -53,3 +68,5 @@ pub fn run_repl(_verbose: bool) {
         };
     }
 }
+
+fn main() {}

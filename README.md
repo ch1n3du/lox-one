@@ -13,7 +13,7 @@ This repo implements the jlox interpreter from the great [Crafting Interpreters]
 - [*] Conditionals `if/else`
 - [*] Loops (`for` and `while` loops)
 - [*] Functions (first-class, closures)
-- [] Resolver
+- [*] Resolver
 - [] Classes
 - [] Inheritance
 

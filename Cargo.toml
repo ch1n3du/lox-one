@@ -2,6 +2,9 @@
 name = "lox_one"
 version = "0.1.0"
 edition = "2021"
+description = "A tree-walking interpreter for the Lox programming language."
+license = "MIT"
+authors = ["Ch1n3du <danielonyesoh@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]

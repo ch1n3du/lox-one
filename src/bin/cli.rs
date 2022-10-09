@@ -36,7 +36,7 @@ fn run_file(src_path: &str) {
 
 fn run_repl(_verbose: bool) {
     let mut interpreter = Interpreter::new();
-    println!("Lox Interpreter Version 1.0.0");
+    println!("Lox Interpreter Version 0.1.0");
     println!("Enter 'exit' or ':q' to quit.");
 
     'a: loop {

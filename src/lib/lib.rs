@@ -1,6 +1,3 @@
-use interpreter::Interpreter;
-use parser::Parser;
-
 pub mod ast;
 pub mod lox_value;
 

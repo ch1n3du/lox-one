@@ -1,17 +1,15 @@
 
-running 2 tests
-test interpreter::tests::executes_while_statements ... ok
+running 14 tests
+test interpreter::tests::executes_call_statements ... ok
+test interpreter::tests::executes_assignment_expressions ... ok
+test interpreter::tests::executes_expr_statements ... ok
+test interpreter::tests::executes_block_statements ... ok
+test interpreter::tests::executes_if_else_statements ... ok
+test interpreter::tests::executes_if_statements ... ok
+test interpreter::tests::executes_continue_statements ... ok
+test interpreter::tests::executes_print_statements ... ok
+test interpreter::tests::executes_logical_and ... ok
+test interpreter::tests::executes_logical_or ... ok
+test interpreter::tests::executes_variables ... ok
 test interpreter::tests::executes_for_statements ... ok
-
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
-
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
+test interpreter::tests::executes_while_statements ... ok

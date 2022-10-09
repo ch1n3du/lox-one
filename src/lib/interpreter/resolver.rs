@@ -33,9 +33,7 @@ impl<'a> Resolver<'a> {
                 self.end_scope();
             }
             Var {
-                name,
-                initializer,
-                postion: _,
+                name, initializer, ..
             } => {
                 // Declare the variable in the innnermost scope marking it as 'still resolving'.
                 self.declare(name);
@@ -51,11 +49,12 @@ impl<'a> Resolver<'a> {
                 self.define(name);
             }
             FunStmt {
-                fun_declaration,
-                position: _,
+                fun_declaration: fun_decl @ FunDecl { name, .. },
+                ..
             } => {
-                self.declare(&fun_declaration.name);
-                self.define(&fun_declaration.name);
+                self.declare(&name);
+                self.define(&name);
+                self.resolve_function(fun_decl)?;
             }
             ExprStmt(expr) => {
                 self.resolve_expr(expr)?;

@@ -1,17 +1,10 @@
-fun printy(a, b) {
-  print "Hello Nottidge";
+fun how_deep_that_stack_go(n) {
+  print n;
+
+  how_deep_that_stack_go(n - 1);
 }
 
-// print "Fuck JAVA";
-
-// fun how_deep_that_stack_go(n) {
-//     print n;
-
-//     how_deep_that_stack_go(n + 1);
-// }
-
-// // how_deep_that_stack_go(10);
-// // how_deep_that_stack_go(1);
+how_deep_that_stack_go(10);
 
 // fun fib(n) {
 //     if (n < 2) {
@@ -21,4 +14,5 @@ fun printy(a, b) {
 //     }
 // }
 
-// print fib(5);
+// print fib(2);
+// print printy(11, 11);

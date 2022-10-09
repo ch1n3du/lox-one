@@ -14,14 +14,14 @@ This repo implements the jlox interpreter from the great [Crafting Interpreters]
 - [x] Loops (`for` and `while` loops)
 - [x] Functions (first-class, closures)
 - [x] Resolver
-- [] Classes
-- [] Inheritance
+- [ ] Classes
+- [ ] Inheritance
 
 ## Later Ideas
 
 I think if I can get done with the book I will add:
 
-- [] Lists
-- [] Hashmaps
-- [] Operator Overloading
-- [] TypeScript style type-checking
+- [ ] Lists
+- [ ] Hashmaps
+- [ ] Operator Overloading
+- [ ] TypeScript style type-checking

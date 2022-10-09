@@ -13,17 +13,6 @@ fn assert_can_parse(title: &str, src: &str, verbose: bool) -> Vec<Stmt> {
         panic!()
     });
 
-    // if verbose {
-    //     log_items(
-    //         format!("Statements from  parsing {}", title).as_str(),
-    //         &statements,
-    //     )
-    // }
-
-    // for stmt in &statements {
-    //     println!("{stmt}")
-    // }
-
     statements
 }
 

@@ -107,10 +107,6 @@ impl Parser {
             (true, None) => Err(ParserError::Eof(self.position())),
             _ => {
                 let tok = self.previous().unwrap();
-                // println!(
-                //     "Wrong Token Consumed expected '{}' found '{}'",
-                //     token_type, tok.token_type,
-                // );
                 Err(ParserError::Expected {
                     msg: msg.to_string(),
                     found: tok.token_type,
@@ -480,7 +476,6 @@ impl Parser {
     }
 
     fn if_statement(&mut self) -> ParserResult<Stmt> {
-        println!("Current: {}, Next: {:?}", self.current, self.peek());
         self.consume(
             TokenType::LeftParen,
             "Expected '(' before condition in an 'if' statement",

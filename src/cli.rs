@@ -25,7 +25,7 @@ pub fn run_repl(_verbose: bool) {
     println!("Enter 'exit' or ':q' to quit.");
 
     'a: loop {
-        print!("{} ", "λ> ".white().bold());
+        print!("{} ", "λ> ".cyan().bold());
         io::stdout().flush().unwrap();
 
         let mut input = String::new();

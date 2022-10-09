@@ -17,15 +17,7 @@ impl Environment {
     }
 
     pub fn begin_scope(&mut self) {
-        println!(
-            "This is before the beginning of the scope.\nEnv Snapshot: {:?}",
-            self
-        );
         self.scopes.push(HashMap::new());
-        println!(
-            "This is after the beginning of the scope.\nEnv Snapshot: {:?}",
-            self
-        );
     }
 
     pub fn end_scope(&mut self) {
@@ -33,7 +25,6 @@ impl Environment {
             panic!("You can't end the global scope dumbass")
         }
         self.scopes.pop();
-        println!("This is the end of the scope.\nEnv Snapshot: {:?}", self);
     }
 
     pub fn get(&self, name: &str) -> Option<LoxValue> {
@@ -47,8 +38,6 @@ impl Environment {
     }
 
     pub fn get_at(&self, name: &str, depth: usize) -> Option<LoxValue> {
-        println!("Called get_at with '{name}' at {depth}");
-        println!("{self:?}");
         self.scopes[depth].get(name).map(|v| v.to_owned())
     }
 

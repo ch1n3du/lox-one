@@ -22,10 +22,6 @@ pub enum LoxValue {
     Nil,
 }
 
-impl Hash for LoxValue {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {}
-}
-
 impl LoxValue {
     /// Returns the truthiness of aLoxValue
     pub fn is_truthy(&self) -> bool {

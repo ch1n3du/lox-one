@@ -159,10 +159,9 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_local(&mut self, expr: &Expr, name: &str) -> RuntimeResult<()> {
-        for (index, scope) in self.scopes.iter().enumerate().rev() {
+        for (index, scope) in self.scopes.iter().rev().enumerate() {
             if scope.contains_key(name) {
                 let depth = self.scopes.len() - 1 - index;
-                println!("Resolved: {expr} at {index}");
                 self.interpreter.resolve(expr, depth)?;
             }
         }
@@ -170,29 +169,27 @@ impl<'a> Resolver<'a> {
     }
 
     /// TODO Resolves a mutable slice of statements
-    fn resolve_stmts(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
+    pub fn resolve_stmts(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
         for stmt in stmts {
-            // println!("Resolving: {stmt}");
             self.resolve_stmt(stmt)?;
-            println!("Top: {:?}", self.scopes);
         }
         Ok(())
     }
 
     pub fn resolve_program(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
-        println!("Before resolving: {:?}", self.scopes);
         self.begin_scope();
         self.resolve_stmts(stmts)?;
         self.end_scope();
-        println!("After resolving: {:?}", self.scopes);
 
         Ok(())
     }
 
     fn resolve_block(&mut self, block: &Stmt) -> RuntimeResult<()> {
+        self.begin_scope();
         if let Stmt::Block(stmts) = block {
             self.resolve_stmts(stmts)?;
         }
+        self.end_scope();
 
         Ok(())
     }

@@ -1,6 +1,5 @@
-fun add(a, b) {
-    var x = a + b;
-    return x;
+fun printy(a, b) {
+  print "Hello Nottidge";
 }
 
 // print "Fuck JAVA";

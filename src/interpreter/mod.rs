@@ -56,22 +56,16 @@ impl Interpreter {
             Value { value, position: _ } => Ok(value.to_owned()),
             Grouping(inner_expr, _position) => self.evaluate(inner_expr),
             Expr::Identifier(name, position) => {
-                println!("Env before ident: {:?}", self.environment);
-                let dep = self.locals.get(position);
-
                 let res = if let Some(depth) = self.locals.get(position) {
-                    println!("Depth: {depth}");
                     if let Some(e) = self.environment.get_at(name, depth.to_owned()) {
                         return Ok(e);
                     } else {
-                        println!("Environment: {:?}", self.environment);
                         Err(RuntimeError::VarDoesNotExist {
                             name: name.to_owned(),
                             position: position.to_owned(),
                         })
                     }
                 } else {
-                    println!("Environment: {:?}, at {position}", self.environment);
                     if let Some(e) = self.globals.get(name) {
                         return Ok(e);
                     } else {
@@ -81,11 +75,6 @@ impl Interpreter {
                         })
                     }
                 };
-                println!(
-                    "Env after ident: {:?} \nDepth: {dep:?}\nValueAt: {:?}",
-                    self.environment,
-                    self.environment.get_at(name, dep.unwrap().clone())
-                );
                 res
             }
             Assignment {
@@ -136,11 +125,6 @@ impl Interpreter {
                 position: _,
             } => {
                 let (lhs, rhs) = (self.evaluate(lhs)?, self.evaluate(rhs)?);
-
-                // println!(
-                //     "Evaluating binary expression: \nLHS: {}\nOP: {}\nRHS: {}",
-                //     &lhs, &op, rhs,
-                // );
 
                 match (&op.token_type, lhs, rhs) {
                     // Arithmetic Operators
@@ -258,7 +242,6 @@ impl Interpreter {
                 self.evaluate(expr)?;
             }
             PrintStmt(expr) => {
-                // println!("Raw: {}", expr);
                 println!("{}", self.evaluate(expr)?);
             }
             Var {
@@ -322,7 +305,6 @@ impl Interpreter {
                 if in_function {
                     if let Some(value) = expr {
                         let value = self.evaluate(value)?;
-                        println!("Return value{value}");
                         return Ok(Some(value));
                     } else {
                         return Ok(None);
@@ -345,8 +327,10 @@ impl Interpreter {
     ) -> RuntimeResult<Option<LoxValue>> {
         use RuntimeError::*;
 
-        let mut resolver = Resolver::new(self);
-        resolver.resolve_program(statements)?;
+        if self.locals.is_empty() {
+            let mut resolver = Resolver::new(self);
+            resolver.resolve_program(statements)?;
+        }
 
         for statement in statements {
             match self.execute(statement, in_loop, in_function) {
@@ -355,11 +339,9 @@ impl Interpreter {
                 }
                 Ok(Some(value)) => return Ok(Some(value)),
                 Err(ValidBreak) => {
-                    println!("About to call 'break': {:?}", self);
                     return Ok(None);
                 }
                 Err(ValidContinue) => {
-                    println!("About to call 'continue': {:?}", self);
                     continue;
                 }
                 err => {
